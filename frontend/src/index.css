@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #0a0a0b;
+    color: #f2f1ee;
+  }
+
+  body {
+    font-family: 'Geist', system-ui, sans-serif;
+    letter-spacing: -0.005em;
+    font-feature-settings: 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #0a0a0b;
+    color: #f2f1ee;
+  }
+
+  ::selection {
+    background-color: rgba(232, 163, 61, 0.3);
+    color: #f2f1ee;
+  }
+}
+
+@layer components {
+  .headline {
+    font-weight: 500;
+    line-height: 1.0;
+    letter-spacing: -0.032em;
+  }
+
+  .headline-tight {
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+  }
+
+  .accent-italic {
+    color: #e8a33d;
+    font-style: italic;
+    font-weight: 400;
+  }
+}
