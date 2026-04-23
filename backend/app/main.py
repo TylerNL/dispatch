@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ask, digest, health, sources
+from app.api import ask, debug, digest, health, sources
 from app.config import settings
 
 
@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
     app.include_router(ask.router, prefix="/api")
     app.include_router(digest.router, prefix="/api")
     app.include_router(sources.router, prefix="/api")
+    app.include_router(debug.router, prefix="/api")
 
     return app
 
