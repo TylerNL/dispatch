@@ -22,7 +22,7 @@ To be deployed (likely via vercel + Render)
 ## Stack
 
 - **Frontend:** React 18, Vite, Tailwind CSS, Geist, lucide-react
-- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Postgres + pgvector
+- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Postgres + pgvector (Alembic gitignored)
 - **Models:** Claude (might change because expensive) for generation, Voyage for embeddings
 
 ## Status
