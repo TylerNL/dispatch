@@ -1,11 +1,15 @@
 import asyncio
+import calendar
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 
+import feedparser
 import httpx
+from bs4 import BeautifulSoup
 
 from app.ingest.base import Source
 from app.schemas.item import Item
+
 
 
 class HackerNews(Source):
@@ -66,9 +70,49 @@ class Lobsters(Source):
 
 class ArXiv(Source):
     name = "arXiv"
+    _base = "https://export.arxiv.org/api/query"
+    _categories = ["cs.LG", "cs.AI", "cs.CL", "cs.CV", "cs.CR"] # cs(ml), ai, nlp, comp vision, crypto
+    _max_results = 15
 
     async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
-        raise NotImplementedError
+        # Build query string manually — httpx encodes colons as %3A which
+        cats = "+OR+".join(f"cat:{c}" for c in self._categories)
+        url = (
+            f"{self._base}?search_query={cats}"
+            f"&start=0&max_results={self._max_results}"
+            f"&sortBy=submittedDate&sortOrder=descending"
+        )
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+
+        feed = feedparser.parse(resp.text)
+        for entry in feed.entries:
+            item = self._parse(entry)
+            if item is not None:
+                yield item
+
+    def _parse(self, entry: feedparser.FeedParserDict) -> Item | None:
+        try:
+            arxiv_id = entry.id.split("/abs/")[-1].split("v")[0]
+            url = f"https://arxiv.org/abs/{arxiv_id}"
+            authors = ", ".join(a.name for a in entry.get("authors", []))
+            # feedparser normalizes all dates to a time.struct_time in published_parsed
+            published_at = datetime.fromtimestamp(
+                calendar.timegm(entry.published_parsed), tz=timezone.utc
+            )
+            return Item(
+                id=f"arxiv:{arxiv_id}",
+                source=self.name,
+                external_id=arxiv_id,
+                url=url,
+                title=entry.title.replace("\n", " ").strip(),
+                author=authors or None,
+                published_at=published_at,
+                summary=entry.summary.replace("\n", " ").strip(),
+            )
+        except Exception:
+            return None
 
 
 class RedditML(Source):
@@ -80,11 +124,10 @@ class RedditML(Source):
 
 class TechCrunch(Source):
     name = "TechCrunch"
+    news_url = "https://techcrunch.com/"
+    #implement later when find correct html parse
 
-    async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
-        raise NotImplementedError
-
-
+#Will implement later if API found
 class Crunchbase(Source):
     name = "Crunchbase"
 
@@ -94,9 +137,74 @@ class Crunchbase(Source):
 
 class AnthropicBlog(Source):
     name = "Anthropic"
+    _base = "https://www.anthropic.com"
+    _listing_url = "https://www.anthropic.com/engineering"
+    # Anthropic exposes no native RSS, so we scrape the listing directly.
+    _ua = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+    )
 
     async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
-        raise NotImplementedError
+        async with httpx.AsyncClient(
+            timeout=20.0, headers={"User-Agent": self._ua}
+        ) as client:
+            resp = await client.get(self._listing_url)
+            resp.raise_for_status()
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.find_all(
+            "a",
+            class_=lambda c: bool(c) and "__cardLink" in c,
+            href=True,
+        )
+        for card in cards:
+            item = self._parse(card)
+            if item is not None:
+                yield item
+
+    def _parse(self, card) -> Item | None:
+        try:
+            href = card["href"]
+            if not href.startswith("/engineering/"):
+                return None
+            slug = href.rstrip("/").split("/")[-1]
+            url = f"{self._base}{href}"
+
+            title_el = card.find(["h2", "h3"])
+            if not title_el:
+                return None
+            title = title_el.get_text(" ", strip=True)
+
+            date_el = card.find(
+                lambda t: t.name == "div"
+                and t.get("class")
+                and any("__date" in cls for cls in t.get("class"))
+            )
+            if not date_el:
+                # Featured post has no inline date; skip for now.
+                return None
+            published_at = datetime.strptime(
+                date_el.get_text(strip=True), "%b %d, %Y"
+            ).replace(tzinfo=timezone.utc)
+
+            summary_el = card.find(
+                lambda t: t.name == "p"
+                and t.get("class")
+                and any("__summary" in cls for cls in t.get("class"))
+            )
+            summary = summary_el.get_text(" ", strip=True) if summary_el else None
+
+            return Item(
+                id=f"anthropic:{slug}",
+                source=self.name,
+                url=url,
+                title=title,
+                published_at=published_at,
+                summary=summary,
+            )
+        except Exception:
+            return None
 
 
 class OpenAIBlog(Source):
