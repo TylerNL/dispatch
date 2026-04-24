@@ -11,7 +11,7 @@ WANT: Make users be able to personalized their email/feed through a filter syste
 ```
 design.md     landing-page spec (copy, tokens, component tree)
 frontend/     Vite + React + TypeScript + Tailwind landing page
-backend/      FastAPI + SQLAlchemy + pgvector RAG service (skeleton)
+backend/      FastAPI + SQLAlchemy + pgvector RAG service w/LangChain using Claud(skeleton)
 ```
 
 ## Quick start
@@ -22,7 +22,7 @@ To be deployed (likely via vercel + Render)
 ## Stack
 
 - **Frontend:** React 18, Vite, Tailwind CSS, Geist, lucide-react
-- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Postgres + pgvector (Alembic gitignored)
+- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Postgres + pgvector (Alembic gitignored), LangChain
 - **Models:** Claude (might change because expensive) for generation, Voyage for embeddings
 
 ## Status
