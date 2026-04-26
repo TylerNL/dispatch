@@ -47,7 +47,7 @@ To be deployed (likely via vercel + Render)
 
   
 
-## Status
+## Status / How it Works
 
 
 ###  1. Ingestion
@@ -68,7 +68,7 @@ Ingested articles are deduplicated before any further processing, ensuring redun
 
 ###  3. Embedding
 
-Deduplicated articles and their summaries are embedded into vector representations for semantic search and retrieval.
+Deduplicated articles and their summaries are embedded into vector representations for semantic search and retrieval using OpenAI's embedding model.
 
 ###  4. Classification
 
