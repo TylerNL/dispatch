@@ -94,7 +94,7 @@ test_ingest_techcrunch.py
 
 | Crunchbase | 🟡 stub | — | Awaiting API access |
 
-| OpenAI blog | 🟡 stub | — | |
+| OpenAI blog | ✅ live | `openai.com/news/rss.xml` (feedparser) | Native RSS, 5 newest |
 
 | DeepMind blog | 🟡 stub | — | |
 
@@ -139,6 +139,8 @@ test_ingest_techcrunch.py
 | `GET /api/debug/ingest-arxiv` | ✅ live |
 
 | `GET /api/debug/ingest-anthropic` | ✅ live |
+
+| `GET /api/debug/ingest-openai` | ✅ live |
 
 | `GET /api/debug/ingest-techcrunch` | 🟡 will 500 — TechCrunch has no `fetch()` |
 
