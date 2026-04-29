@@ -61,13 +61,6 @@ class HackerNews(Source):
         )
 
 
-class Lobsters(Source):
-    name = "Lobsters"
-
-    async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
-        raise NotImplementedError
-
-
 class ArXiv(Source):
     name = "arXiv"
     _base = "https://export.arxiv.org/api/query"
@@ -124,8 +117,44 @@ class RedditML(Source):
 
 class TechCrunch(Source):
     name = "TechCrunch"
-    news_url = "https://techcrunch.com/"
-    #implement later when find correct html parse
+    _feed_url = "https://techcrunch.com/feed/"
+    _max_entries = 15
+
+    async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(self._feed_url)
+            resp.raise_for_status()
+
+        feed = feedparser.parse(resp.text)
+        for entry in feed.entries[: self._max_entries]:
+            item = self._parse(entry)
+            if item is not None:
+                yield item
+
+    def _parse(self, entry: feedparser.FeedParserDict) -> Item | None:
+        try:
+            url = entry.link
+            slug = url.rstrip("/").split("/")[-1]
+            published_at = datetime.fromtimestamp(
+                calendar.timegm(entry.published_parsed), tz=timezone.utc
+            )
+            raw_summary = entry.get("summary", "")
+            summary = (
+                BeautifulSoup(raw_summary, "html.parser").get_text(" ", strip=True)
+                if raw_summary
+                else None
+            )
+            return Item(
+                id=f"techcrunch:{slug}",
+                source=self.name,
+                url=url,
+                title=entry.title.strip(),
+                author=entry.get("author") or None,
+                published_at=published_at,
+                summary=summary or None,
+            )
+        except Exception:
+            return None
 
 #Will implement later if API found
 class Crunchbase(Source):
@@ -265,7 +294,6 @@ class Bluesky(Source):
 
 REGISTRY: list[type[Source]] = [
     HackerNews,
-    Lobsters,
     ArXiv,
     RedditML,
     TechCrunch,

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.ingest.sources import AnthropicBlog, ArXiv, HackerNews, TechCrunch
+from app.ingest.sources import AnthropicBlog, ArXiv, HackerNews, OpenAIBlog, TechCrunch
 from app.schemas.item import Item
 
 router = APIRouter(prefix="/debug", tags=["debug"])
@@ -31,3 +31,8 @@ async def ingest_techcrunch() -> list[Item]:
 @router.get("/ingest-anthropic", response_model=list[Item])
 async def ingest_anthropic() -> list[Item]:
     return await _collect(AnthropicBlog)
+
+
+@router.get("/ingest-openai", response_model=list[Item])
+async def ingest_openai() -> list[Item]:
+    return await _collect(OpenAIBlog)
