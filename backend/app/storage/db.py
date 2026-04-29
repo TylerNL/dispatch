@@ -4,9 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 
-# Supabase transaction-pooler (:6543) does not support prepared statements.
-# Setting prepare_threshold=None disables psycopg's statement cache so we don't
-# get DuplicatePreparedStatement errors under load.
 engine = create_async_engine(
     settings.database_url,
     pool_pre_ping=True,

@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-EMBED_DIM = 1024  # voyage-3
+EMBED_DIM = 1024  # OpenAI text-embedding-3-small 1536 -> 1024
 
 
 class Base(DeclarativeBase):

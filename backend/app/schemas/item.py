@@ -10,6 +10,7 @@ Topic = Literal["research", "labs", "startups", "community", "security", "signal
 class Item(BaseModel):
     id: str
     source: str
+    external_id: str | None = None
     url: str
     title: str
     author: str | None = None

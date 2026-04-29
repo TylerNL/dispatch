@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
 
     anthropic_api_key: str = ""
-    embed_model: str = "voyage-3"
+    openai_api_key: str = ""
+    embed_model: str = "text-embedding-3-small"
     gen_model: str = "claude-opus-4-7"
     frontend_origin: str = "http://localhost:5173"
 
