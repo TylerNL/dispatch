@@ -6,7 +6,6 @@ from app.storage.models import EMBED_DIM
 
 _OPENAI_URL = "https://api.openai.com/v1/embeddings"
 
-
 async def embed_batch(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
