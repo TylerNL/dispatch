@@ -124,6 +124,16 @@ test_ingest_techcrunch.py
 
 -  `storage/vector.py::search` — stub.
 
+-  **Migration** (`alembic/versions/2026_04_30_initial_schema.py`) — creates `items`, `chunks`, `sources`, `subscribers` tables. Run with `alembic upgrade head` (uses `DATABASE_URL_DIRECT`).
+
+  
+
+**Supabase problems**:
+
+- `DATABASE_URL_DIRECT` must use `postgresql+psycopg://` (psycopg3 driver), not the bare `postgresql://` Supabase gives you — the bare form defaults to psycopg2, which isn't installed.
+
+- Supabase installs pgvector in the `embeddings` schema, not `public` or `extensions`. The migration schema-qualifies all vector DDL as `embeddings.vector` and `embeddings.vector_cosine_ops` to avoid search_path issues.
+
   
 
 ### API
@@ -260,10 +270,10 @@ uvicorn  app.main:app  --reload
 
 ### (futurely) Required env
 
-`DATABASE_URL` (pooler `:6543`), `DATABASE_URL_DIRECT` (`:5432`, Alembic only),
+`DATABASE_URL` (pooler `:6543`, psycopg3 scheme), `DATABASE_URL_DIRECT` (`:5432`, Alembic only, psycopg3 scheme),
 
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 
-`SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPABASE_URL` / `SUPABASE_KEY` / `SUPABASE_SERVICE_ROLE_KEY`,
 
-`FRONTEND_ORIGIN`.
+`SCRAPERAPI_KEY`, `FRONTEND_ORIGIN`.
