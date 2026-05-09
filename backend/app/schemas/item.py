@@ -7,7 +7,7 @@ from pydantic import BaseModel
 Topic = Literal["research", "labs", "startups", "community", "security", "signal"]
 
 
-class Item(BaseModel):
+class Item(BaseModel): # Title, topic, summary, score 
     id: str
     source: str
     external_id: str | None = None
