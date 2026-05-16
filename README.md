@@ -39,9 +39,9 @@ To be deployed (likely via vercel + Render)
 
   
 
-- **Frontend:** React 18, Vite, Tailwind CSS, Geist, lucide-react
+- **Frontend:** React, Vite, Tailwind CSS, Geist, lucide-react
 
-- **Backend:** Python 3.11, FastAPI, async SQLAlchemy, Postgres + pgvector, Alembic
+- **Backend:** Python 3.13, FastAPI, async SQLAlchemy, Postgres + pgvector, Alembic
 
 - **Models:** Claude (might change because expensive) for generation, OpenAI `text-embedding-3-small` (1024-dim) for embeddings
 
@@ -62,15 +62,15 @@ Articles aggregated/pulled from multiple sources:
 
 - AI Lab blogs (Anthropic, OpenAI, Deepmind)
 
-###  2. Deduplication
+###  1.5 Deduplication
 
 Ingested articles are deduplicated before any further processing, ensuring redundant content is discarded early.
 
-###  3. Embedding
+###  2. Embedding
 
 Deduplicated articles and their summaries are embedded into vector representations for semantic search and retrieval using OpenAI's embedding model.
 
-###  4. Classification
+###  3. Classification
 
 Embedded content is classified by topic, enabling fine-grained filtering downstream.
 
