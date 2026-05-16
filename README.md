@@ -23,7 +23,7 @@ design.md landing-page spec (copy, tokens, component tree)
 
 frontend/ Vite + React + TypeScript + Tailwind landing page
 
-backend/ FastAPI + SQLAlchemy + pgvector RAG service w/LangChain using Claud(skeleton)
+backend/ FastAPI + SQLAlchemy + pgvector RAG service (Claude generation, OpenAI embeddings)
 
 
   
@@ -41,9 +41,9 @@ To be deployed (likely via vercel + Render)
 
 - **Frontend:** React 18, Vite, Tailwind CSS, Geist, lucide-react
 
-- **Backend:** Python 3.11, FastAPI, SQLAlchemy, Postgres + pgvector (Alembic gitignored), LangChain
+- **Backend:** Python 3.11, FastAPI, async SQLAlchemy, Postgres + pgvector, Alembic
 
-- **Models:** Claude (might change because expensive) for generation, Voyage for embeddings
+- **Models:** Claude (might change because expensive) for generation, OpenAI `text-embedding-3-small` (1024-dim) for embeddings
 
   
 

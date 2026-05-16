@@ -24,7 +24,7 @@ config.py settings (pydantic-settings)
 
 api/ HTTP routes
 
-debug.py manual triggers for each source (temporary)
+debug.py manual triggers for each source + POST /seed (fetch → embed → upsert)
 
 ingest/
 
@@ -38,11 +38,11 @@ dedupe.py URL canonicalization + fingerprint check
 
 embed.py batch + single embedding calls
 
-rag/ LangChain-based retriever + generator (planned)
+rag/ retriever + generator (live)
 
-retriever.py PGVector retriever over chunks table
+retriever.py pgvector cosine search w/ window + topic filters
 
-generator.py ChatAnthropic + LCEL chain (lowk hardest par), streaming with citations
+generator.py Anthropic SDK, sync + SSE streaming, citation post-processing
 
 prompts.py SYSTEM_PROMPT + context formatter
 
@@ -50,7 +50,7 @@ storage/
 
 models.py ItemRow, ChunkRow, SourceRow, SubscriberRow
 
-vector.py upsert(item, chunks, embeddings); search() [stub]
+vector.py upsert(item, chunks, embeddings); search(embedding, k, since, topic)
 
 schemas/item.py Item / Digest / SourceStatus
 
@@ -86,7 +86,7 @@ test_ingest_techcrunch.py
 
 | Anthropic | ✅ live | HTML scrape of `anthropic.com/engineering` | No native RSS; rsshub.app is Cloudflare-gated. Featured post skipped. |
 
-| TechCrunch | 🟡 stub | — | `news_url` set, `fetch()` not implemented |
+| TechCrunch |  `techcrunch.com/feed/` RSS (feedparser) | 15 newest entries |
 
 | Lobsters | 🟡 stub | — | |
 
@@ -122,7 +122,7 @@ test_ingest_techcrunch.py
 
 -  `storage/vector.py::upsert` — inserts item row (on-conflict updates `score`, `summary`, `topic`) and chunk rows (on-conflict do nothing).
 
--  `storage/vector.py::search` — stub.
+-  `storage/vector.py::search` — cosine similarity over chunks, joins to items, filters by `since` (datetime) and `topic`, deduplicates by item (best chunk per item), returns top-k `Item` list.
 
 -  **Migration** (`alembic/versions/2026_04_30_initial_schema.py`) — creates `items`, `chunks`, `sources`, `subscribers` tables. Run with `alembic upgrade head` (uses `DATABASE_URL_DIRECT`).
 
@@ -130,7 +130,9 @@ test_ingest_techcrunch.py
 
 **Supabase problems**:
 
-- `DATABASE_URL_DIRECT` must use `postgresql+psycopg://` (psycopg3 driver), not the bare `postgresql://` Supabase gives you — the bare form defaults to psycopg2, which isn't installed.
+- Both `DATABASE_URL` and `DATABASE_URL_DIRECT` must use `postgresql+psycopg://` (psycopg3 driver), not the bare `postgresql://` Supabase gives you — the bare form defaults to psycopg2, which isn't installed.
+
+- Supabase-generated passwords often contain special characters (`!`, `^`, `;`, etc.) that must be URL-encoded in the connection string (e.g. `!` → `%21`, `^` → `%5E`, `;` → `%3B`). Python: `from urllib.parse import quote; quote(password, safe="")`.
 
 - Supabase installs pgvector in the `embeddings` schema, not `public` or `extensions`. The migration schema-qualifies all vector DDL as `embeddings.vector` and `embeddings.vector_cosine_ops` to avoid search_path issues.
 
@@ -152,9 +154,12 @@ test_ingest_techcrunch.py
 
 | `GET /api/debug/ingest-openai` | ✅ live |
 
-| `GET /api/debug/ingest-techcrunch` | 🟡 will 500 — TechCrunch has no `fetch()` |
+| `GET /api/debug/ingest-techcrunch` | live |
 
-| `POST /api/ask` | planned — RAG chat, SSE with citations |
+| `POST /api/debug/seed` | — fetches all live sources, embeds via OpenAI, upserts into pgvector. Returns per-source counts |
+| `POST /api/ask` | ✅ live — non-streaming, returns `AskResponse` JSON |
+
+| `POST /api/ask/stream` | ✅ live — SSE stream: `{"type":"delta","text":…}` events, final `{"type":"citations",…}`, then `[DONE]` |
 
 | `GET /api/digest/today` | planned |
 
@@ -214,23 +219,20 @@ OpenAI `text-embedding-3-small` @ 1024 dimensions (truncated via the `dimensions
 
   
 
-## RAG (planned)
+## RAG
 
-  
+Direct Anthropic SDK + raw pgvector queries via SQLAlchemy.
 
-LangChain is scoped to `rag/` only — ingest, dedupe, and the raw embed call stay on `httpx` / SQLAlchemy.
+-  **Retriever** (`rag/retriever.py`): Embeds the question via `pipeline/embed.py` (OpenAI), converts `TimeWindow` to a `since` cutoff, calls `storage/vector.search()` for cosine-ranked items.
 
-  
+-  **Generator** (`rag/generator.py`): Anthropic SDK (`claude-opus-4-7`). Two modes:
+   - `generate()` — single-shot, returns `AskResponse` with `answer` + `citations` + `latency_ms`. Used by `POST /api/ask`.
+   - `generate_stream()` — async iterator yielding text deltas. Used by `POST /api/ask/stream` (SSE). Citations are sent as a final SSE event since they come from the retrieved context, not the LLM output.
+   - To-implement: check user auth -> if session, allow up to 5 queries/chat messages. Otherwise, 1 and then push the user to sign-up.
 
--  **Retriever**: `langchain_postgres.PGVector` over the existing `chunks` table; window + topic filters as metadata filters.
+-  **Prompts** (`rag/prompts.py`): `SYSTEM_PROMPT` instructs `[n]` inline citations. `format_context()` numbers items as `[1] Title\nSummary\nURL`. `build_user_prompt()` wraps context in `<context>` tags.
 
--  **Generator**: `langchain_anthropic.ChatAnthropic` (`claude - probably sonnet 4.5 tbh cuz broke) in an LCEL chain — `retriever | prompt | model | citation_parser` — streamed to `/api/ask`.
-
--  **Prompts**: `prompts.py` holds `SYSTEM_PROMPT` + the `(question, context)` formatter. Model emits inline `[n]` markers; post-processor maps `n → item_id`.
-
-  
-
-Might switch to LangGraph — revisit only if `/api/ask` grows into multi-hop retrieval or query rewriting.
+-  **Prompt caching**: System prompt is cached via Anthropic `cache_control: ephemeral`. Context block caching is a future optimization for high-traffic queries against the same day's articles.
 
   
 
@@ -258,11 +260,12 @@ uv  venv && source  .venv/bin/activate
 
 uv  sync  --extra  dev
 
-cp  .env.example  .env  # fill in keys
 
 alembic  upgrade  head
 
 uvicorn  app.main:app  --reload
+
+curl  -X  POST  http://localhost:8000/api/debug/seed
 
 ```
 

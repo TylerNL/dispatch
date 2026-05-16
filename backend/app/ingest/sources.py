@@ -147,6 +147,7 @@ class TechCrunch(Source):
             return Item(
                 id=f"techcrunch:{slug}",
                 source=self.name,
+                external_id=slug,
                 url=url,
                 title=entry.title.strip(),
                 author=entry.get("author") or None,
@@ -227,6 +228,7 @@ class AnthropicBlog(Source):
             return Item(
                 id=f"anthropic:{slug}",
                 source=self.name,
+                external_id=slug,
                 url=url,
                 title=title,
                 published_at=published_at,
@@ -268,6 +270,7 @@ class OpenAIBlog(Source):
             return Item(
                 id=f"openai:{slug}",
                 source=self.name,
+                external_id=slug,
                 url=url,
                 title=entry.title.strip(),
                 author=entry.get("author") or None,

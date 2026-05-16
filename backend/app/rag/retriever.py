@@ -16,11 +16,11 @@ _WINDOW_DELTAS: dict[TimeWindow, timedelta | None] = {
 
 
 async def retrieve(
-    question: str,
-    window: TimeWindow = "week",
-    topic: str | None = None,
-    k: int = 12,
-) -> list[Item]:
+question: str,
+window: TimeWindow = "week",
+topic: str | None = None,
+k: int = 12,
+    ) -> list[Item]:
     query_embedding = await embed_text(question)
 
     delta = _WINDOW_DELTAS[window]
