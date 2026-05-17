@@ -14,7 +14,7 @@ router = APIRouter(tags=["ask"])
 @router.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest) -> AskResponse:
     t0 = time.perf_counter()
-    context = await retrieve(req.question, window=req.window, topic=req.topic)
+    context = await retrieve(req.question, window=req.window, topic=req.topic, sources=req.sources)
     resp = await generate(req.question, context)
     resp.latency_ms = int((time.perf_counter() - t0) * 1000)
     return resp
@@ -22,7 +22,7 @@ async def ask(req: AskRequest) -> AskResponse:
 
 @router.post("/ask/stream")
 async def ask_stream(req: AskRequest) -> StreamingResponse:
-    context = await retrieve(req.question, window=req.window, topic=req.topic)
+    context = await retrieve(req.question, window=req.window, topic=req.topic, sources=req.sources)
 
     async def event_stream():
         async for chunk in generate_stream(req.question, context):

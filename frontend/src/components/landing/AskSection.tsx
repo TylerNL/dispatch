@@ -1,10 +1,22 @@
-import { useRef, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import SectionHead from '../ui/SectionHead';
 import { chips } from '../../lib/chips';
+
+const API_URL = 'http://localhost:8000/api';
+interface Citation {
+  item_id: string;
+  title: string;
+  url: string;
+  source: string;
+  snippet?: string;
+}
 
 export default function AskSection() {
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const [answer, setAnswer] = useState('');
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const handleChip = (value: string) => {
     if (!inputRef.current) return;
@@ -13,9 +25,56 @@ export default function AskSection() {
     boxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: POST to RAG endpoint and stream result below.
+    const question = inputRef.current?.value.trim();
+    if (!question || loading) return;
+
+    setAnswer('');
+    setCitations([]);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/ask/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      });
+
+      if (!res.ok || !res.body) {
+        setAnswer('Something went wrong — try again.');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6);
+          if (payload === '[DONE]') break;
+          const event = JSON.parse(payload);
+          if (event.type === 'delta') {
+            setAnswer((prev) => prev + event.text);
+          } else if (event.type === 'citations') {
+            setCitations(event.citations);
+          }
+        }
+      }
+    } catch {
+      setAnswer('Network error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,11 +117,39 @@ export default function AskSection() {
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1 rounded-full bg-accent text-bg hover:bg-accent-hover px-3.5 h-8 text-[13px] font-medium transition-colors duration-150"
+              disabled={loading}
+              className="inline-flex items-center gap-1 rounded-full bg-accent text-bg hover:bg-accent-hover px-3.5 h-8 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50"
             >
-              Ask →
+              {loading ? '...' : 'Ask →'}
             </button>
           </form>
+
+          {(answer || loading) && (
+            <div className="px-5 pb-5 pt-2 border-t border-border">
+              <p className="text-[14.5px] text-text leading-relaxed whitespace-pre-wrap">
+                {answer}
+                {loading && !answer && (
+                  <span className="text-text-mute">Thinking...</span>
+                )}
+              </p>
+              {citations.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {citations.map((c) => (
+                    <a
+                      key={c.item_id}
+                      href={c.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-bg-elev border border-border px-2.5 py-1 text-[11.5px] text-text-dim hover:border-border-hover hover:text-text transition-colors"
+                    >
+                      <span className="font-medium">{c.source}</span>
+                      <span className="truncate max-w-[180px]">{c.title}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 max-w-[820px]">

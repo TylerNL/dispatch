@@ -62,6 +62,7 @@ async def search(
     k: int = 12,
     since: datetime | None = None,
     topic: str | None = None,
+    sources: list[str] | None = None,
 ) -> list[Item]:
     age_days = func.extract("epoch", func.now() - ItemRow.published_at) / 86400.0
     score = (
@@ -77,6 +78,8 @@ async def search(
         best = best.where(ItemRow.published_at >= since)
     if topic is not None:
         best = best.where(ItemRow.topic == topic)
+    if sources:
+        best = best.where(ItemRow.source.in_(sources))
 
     best = (
         best.group_by(ChunkRow.item_id, ItemRow.published_at)

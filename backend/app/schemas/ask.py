@@ -11,6 +11,7 @@ class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     window: TimeWindow = "all"
     topic: str | None = None
+    sources: list[str] | None = None
 
 
 class Citation(BaseModel):
