@@ -43,7 +43,7 @@ To be deployed (likely via vercel + Render)
 
 - **Backend:** Python 3.13, FastAPI, async SQLAlchemy, Postgres + pgvector, Alembic
 
-- **Models:** Claude (might change because expensive) for generation, OpenAI `text-embedding-3-small` (1024-dim) for embeddings
+- **Models:** OpenAI GPT-4.1 Nano for generation, OpenAI `text-embedding-3-small` (1024-dim) for embeddings
 
   
 

@@ -84,7 +84,7 @@ test_ingest_techcrunch.py
 
 | arXiv | ✅ live | `export.arxiv.org/api/query` Atom (feedparser) | cs.LG / cs.AI / cs.CL / cs.CV / cs.CR, 15 newest |
 
-| Anthropic | ✅ live | HTML scrape of `anthropic.com/engineering` | No native RSS; rsshub.app is Cloudflare-gated. Featured post skipped. |
+| Anthropic | HTML scrape of `anthropic.com/news` | scrapes listing (date, category, title). |
 
 | TechCrunch |  `techcrunch.com/feed/` RSS (feedparser) | 15 newest entries |
 
@@ -120,9 +120,9 @@ test_ingest_techcrunch.py
 
 -  `storage/models.py` — ORM models including pgvector `Vector(EMBED_DIM)` chunks with an HNSW cosine index.
 
--  `storage/vector.py::upsert` — inserts item row (on-conflict updates `score`, `summary`, `topic`) and chunk rows (on-conflict do nothing).
+-  `storage/vector.py::upsert` — inserts item row (on-conflict updates `score`, `summary`, `topic`) and chunk rows (on-conflict updates `content`, `embedding`).
 
--  `storage/vector.py::search` — cosine similarity over chunks, joins to items, filters by `since` (datetime) and `topic`, deduplicates by item (best chunk per item), returns top-k `Item` list.
+-  `storage/vector.py::search` — cosine similarity with recency decay (0.001/day penalty) over chunks, joins to items, filters by `since` (datetime) and `topic`, deduplicates by item (best chunk per item), returns top-k `Item` list.
 
 -  **Migration** (`alembic/versions/2026_04_30_initial_schema.py`) — creates `items`, `chunks`, `sources`, `subscribers` tables. Run with `alembic upgrade head` (uses `DATABASE_URL_DIRECT`).
 
@@ -221,18 +221,16 @@ OpenAI `text-embedding-3-small` @ 1024 dimensions (truncated via the `dimensions
 
 ## RAG
 
-Direct Anthropic SDK + raw pgvector queries via SQLAlchemy.
+OpenAI SDK + raw pgvector queries via SQLAlchemy.
 
--  **Retriever** (`rag/retriever.py`): Embeds the question via `pipeline/embed.py` (OpenAI), converts `TimeWindow` to a `since` cutoff, calls `storage/vector.search()` for cosine-ranked items.
+-  **Retriever** (`rag/retriever.py`): Embeds the question via `pipeline/embed.py` (OpenAI), calls `storage/vector.search()` which ranks by cosine similarity blended with a recency decay (newer articles score slightly higher at equal relevance).
 
--  **Generator** (`rag/generator.py`): Anthropic SDK (`claude-opus-4-7`). Two modes:
+-  **Generator** (`rag/generator.py`):(`gpt-4.1-nano`). Two modes:
    - `generate()` — single-shot, returns `AskResponse` with `answer` + `citations` + `latency_ms`. Used by `POST /api/ask`.
    - `generate_stream()` — async iterator yielding text deltas. Used by `POST /api/ask/stream` (SSE). Citations are sent as a final SSE event since they come from the retrieved context, not the LLM output.
    - To-implement: check user auth -> if session, allow up to 5 queries/chat messages. Otherwise, 1 and then push the user to sign-up.
 
 -  **Prompts** (`rag/prompts.py`): `SYSTEM_PROMPT` instructs `[n]` inline citations. `format_context()` numbers items as `[1] Title\nSummary\nURL`. `build_user_prompt()` wraps context in `<context>` tags.
-
--  **Prompt caching**: System prompt is cached via Anthropic `cache_control: ephemeral`. Context block caching is a future optimization for high-traffic queries against the same day's articles.
 
   
 
