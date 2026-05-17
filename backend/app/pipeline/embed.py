@@ -1,28 +1,21 @@
-import httpx
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.schemas.item import Item
 from app.storage.models import EMBED_DIM
 
-_OPENAI_URL = "https://api.openai.com/v1/embeddings"
+_client = AsyncOpenAI(api_key=settings.openai_api_key)
+
 
 async def embed_batch(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            _OPENAI_URL,
-            headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-            json={
-                "input": texts,
-                "model": settings.embed_model,
-                "dimensions": EMBED_DIM,
-            },
-        )
-        resp.raise_for_status()
-    data = resp.json()
-    ordered = sorted(data["data"], key=lambda x: x["index"])
-    return [entry["embedding"] for entry in ordered]
+    resp = await _client.embeddings.create(
+        input=texts,
+        model=settings.embed_model,
+        dimensions=EMBED_DIM,
+    )
+    return [entry.embedding for entry in resp.data]
 
 
 async def embed_text(text: str) -> list[float]:

@@ -9,7 +9,7 @@ TimeWindow = Literal["today", "week", "month", "year", "all"]
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
-    window: TimeWindow = "week"
+    window: TimeWindow = "all"
     topic: str | None = None
 
 

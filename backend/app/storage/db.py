@@ -7,7 +7,10 @@ from app.config import settings
 engine = create_async_engine(
     settings.database_url,
     pool_pre_ping=True,
-    connect_args={"prepare_threshold": None},
+    connect_args={
+        "prepare_threshold": None,
+        "options": "-c search_path=public,embeddings",
+    },
 )
 
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
