@@ -168,12 +168,12 @@ class Crunchbase(Source):
 class AnthropicBlog(Source):
     name = "Anthropic"
     _base = "https://www.anthropic.com"
-    _listing_url = "https://www.anthropic.com/engineering"
-    # Anthropic exposes no native RSS, so we scrape the listing directly.
+    _listing_url = "https://www.anthropic.com/news"
     _ua = (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
     )
+    _date_re = __import__("re").compile(r"[A-Z][a-z]{2} \d{1,2}, \d{4}")
 
     async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
         async with httpx.AsyncClient(
@@ -183,47 +183,37 @@ class AnthropicBlog(Source):
             resp.raise_for_status()
 
         soup = BeautifulSoup(resp.text, "html.parser")
-        cards = soup.find_all(
-            "a",
-            class_=lambda c: bool(c) and "__cardLink" in c,
-            href=True,
-        )
-        for card in cards:
-            item = self._parse(card)
+        links = soup.find_all("a", href=lambda h: h and h.startswith("/news/"))
+        for link in links:
+            item = self._parse(link)
             if item is not None:
                 yield item
 
-    def _parse(self, card) -> Item | None:
+    def _parse(self, link) -> Item | None:
         try:
-            href = card["href"]
-            if not href.startswith("/engineering/"):
-                return None
+            href = link["href"]
             slug = href.rstrip("/").split("/")[-1]
             url = f"{self._base}{href}"
 
-            title_el = card.find(["h2", "h3"])
-            if not title_el:
+            text = link.get_text(" ", strip=True)
+            if not text:
                 return None
-            title = title_el.get_text(" ", strip=True)
 
-            date_el = card.find(
-                lambda t: t.name == "div"
-                and t.get("class")
-                and any("__date" in cls for cls in t.get("class"))
-            )
-            if not date_el:
-                # Featured post has no inline date; skip for now.
+            date_match = self._date_re.search(text)
+            if not date_match:
                 return None
             published_at = datetime.strptime(
-                date_el.get_text(strip=True), "%b %d, %Y"
+                date_match.group(), "%b %d, %Y"
             ).replace(tzinfo=timezone.utc)
 
-            summary_el = card.find(
-                lambda t: t.name == "p"
-                and t.get("class")
-                and any("__summary" in cls for cls in t.get("class"))
-            )
-            summary = summary_el.get_text(" ", strip=True) if summary_el else None
+            parts = [p.strip() for p in text.split("  ") if p.strip()]
+            title = parts[-1] if parts else text
+            
+            if self._date_re.search(title) and len(parts) > 1:
+                title = parts[-1]
+
+            if not title or title == date_match.group():
+                return None
 
             return Item(
                 id=f"anthropic:{slug}",
@@ -232,7 +222,6 @@ class AnthropicBlog(Source):
                 url=url,
                 title=title,
                 published_at=published_at,
-                summary=summary,
             )
         except Exception:
             return None

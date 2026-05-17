@@ -54,6 +54,8 @@ async def upsert(
         )
 
 
+_RECENCY_DECAY = 0.001  # +0.03 for a month-old article
+
 async def search(
     session: AsyncSession,
     embedding: list[float],
@@ -61,11 +63,13 @@ async def search(
     since: datetime | None = None,
     topic: str | None = None,
 ) -> list[Item]:
+    age_days = func.extract("epoch", func.now() - ItemRow.published_at) / 86400.0
+    score = (
+        func.min(ChunkRow.embedding.cosine_distance(embedding)) + _RECENCY_DECAY * age_days
+    ).label("score")
+
     best = (
-        select(
-            ChunkRow.item_id,
-            func.min(ChunkRow.embedding.cosine_distance(embedding)).label("dist"),
-        )
+        select(ChunkRow.item_id, score)
         .join(ItemRow, ChunkRow.item_id == ItemRow.id)
     )
 
@@ -74,9 +78,14 @@ async def search(
     if topic is not None:
         best = best.where(ItemRow.topic == topic)
 
-    best = best.group_by(ChunkRow.item_id).order_by(text("dist")).limit(k).subquery()
+    best = (
+        best.group_by(ChunkRow.item_id, ItemRow.published_at)
+        .order_by(text("score"))
+        .limit(k)
+        .subquery()
+    )
 
-    stmt = select(ItemRow).join(best, ItemRow.id == best.c.item_id).order_by(best.c.dist)
+    stmt = select(ItemRow).join(best, ItemRow.id == best.c.item_id).order_by(best.c.score)
     rows = (await session.execute(stmt)).scalars().all()
 
     return [
