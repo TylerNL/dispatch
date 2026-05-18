@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Button from '../ui/Button';
+import { useAuthModal } from '../../contexts/AuthModalContext';
 
 const links = [
   { label: 'How it works', href: '#how-it-works' },
@@ -10,6 +11,7 @@ const links = [
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const { open } = useAuthModal();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -40,9 +42,14 @@ export default function Nav() {
             </a>
           ))}
         </nav>
-        <a href="#signup">
-          <Button variant="accent">Get the digest →</Button>
-        </a>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={() => open('login')}>
+            Sign in
+          </Button>
+          <Button variant="accent" onClick={() => open('signup')}>
+            Get the digest →
+          </Button>
+        </div>
       </div>
     </header>
   );

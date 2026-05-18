@@ -1,7 +1,10 @@
 import SectionLabel from '../ui/SectionLabel';
 import Button from '../ui/Button';
+import { useAuthModal } from '../../contexts/AuthModalContext';
 
 export default function CtaBanner() {
+  const { open } = useAuthModal();
+
   return (
     <section className="relative overflow-hidden px-5 md:px-8 pt-[120px] pb-[140px] border-t border-border">
       <div
@@ -21,9 +24,9 @@ export default function CtaBanner() {
           Your timeline is <span className="accent-italic">reading</span> this. Are you?
         </h2>
         <div className="mt-9">
-          <a href="#signup">
-            <Button variant="accent">Get the digest →</Button>
-          </a>
+          <Button variant="accent" onClick={() => open('signup')}>
+            Get the digest →
+          </Button>
         </div>
       </div>
     </section>

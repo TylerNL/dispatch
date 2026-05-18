@@ -1,9 +1,12 @@
 import { Check } from 'lucide-react';
 import Button from '../ui/Button';
+import { useAuthModal } from '../../contexts/AuthModalContext';
 
 const metaItems = ['One email, 7 AM PT', 'Free forever', 'No tracking'];
 
 export default function Hero() {
+  const { open } = useAuthModal();
+
   return (
     <section
       id="signup"
@@ -39,10 +42,12 @@ export default function Hero() {
           Hacker News, arXiv, the labs, and the rest of the firehose — then ask it anything.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3 animate-fade-up [animation-delay:0.35s]">
-          <Button variant="accent">Get the digest →</Button>
-          <a href="#how-it-works">
-            <Button variant="ghost">See how it works</Button>
-          </a>
+          <Button variant="accent" onClick={() => open('signup')}>
+            Get the digest →
+          </Button>
+          <Button variant="ghost" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>
+            See how it works
+          </Button>
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[11.5px] text-text-mute uppercase tracking-[0.12em] animate-fade-up [animation-delay:0.45s]">
           {metaItems.map((item) => (
