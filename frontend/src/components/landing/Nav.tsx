@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { useAuthModal } from '../../contexts/AuthModalContext';
 
@@ -43,6 +44,12 @@ export default function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          <Link
+            to="/chat"
+            className="text-[14px] text-text-dim hover:text-text transition-colors duration-150"
+          >
+            Open chat
+          </Link>
           <Button variant="ghost" onClick={() => open('login')}>
             Sign in
           </Button>
