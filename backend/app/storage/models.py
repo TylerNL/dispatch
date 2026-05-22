@@ -3,6 +3,7 @@ from datetime import datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -12,6 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBED_DIM = 1024  # OpenAI text-embedding-3-small 1536 -> 1024
@@ -27,6 +29,7 @@ class ItemRow(Base):
         UniqueConstraint("source", "external_id", name="uq_items_source_external_id"),
         Index("ix_items_published_at", "published_at"),
         Index("ix_items_topic_published", "topic", "published_at"),
+        Index("ix_items_search_vector", "search_vector", postgresql_using="gin"),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -40,6 +43,14 @@ class ItemRow(Base):
     topic: Mapped[str | None] = mapped_column(String, nullable=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     fingerprint: Mapped[str] = mapped_column(String, index=True)
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        Computed(
+            "setweight(to_tsvector('english', coalesce(title, '')), 'A') || "
+            "setweight(to_tsvector('english', coalesce(summary, '')), 'B')",
+            persisted=True,
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
