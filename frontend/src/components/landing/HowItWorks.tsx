@@ -29,7 +29,6 @@ export default function HowItWorks() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                   <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
                     Step {step.number}
                   </span>

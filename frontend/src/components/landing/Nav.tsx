@@ -29,7 +29,6 @@ export default function Nav() {
     >
       <div className="mx-auto max-w-container px-5 md:px-8 h-[64px] flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5 group">
-          <span className="w-2 h-2 rounded-full bg-accent" />
           <span className="text-[17px] font-medium tracking-[-0.015em]">dispatch</span>
         </a>
         <nav className="hidden md:flex items-center gap-8">
