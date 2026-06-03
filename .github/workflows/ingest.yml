@@ -1,0 +1,41 @@
+name: ingest
+
+# Nightly ingest pipeline: fetch → dedupe → summarize → classify → embed → upsert.
+# Runs as an external cron so the web process stays stateless. Loose scheduling
+# is fine — this feeds a daily digest, not request-time traffic.
+on:
+  schedule:
+    - cron: "0 8 * * *"  # 08:00 UTC daily
+  workflow_dispatch: {}    # manual "Run workflow" button
+
+# Don't let a slow run overlap the next scheduled one.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Run ingest
+        run: uv run python -m app.ingest.scheduler
