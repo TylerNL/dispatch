@@ -1,14 +1,18 @@
+import asyncio
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.ingest.sources import AnthropicBlog, ArXiv, HackerNews, OpenAIBlog, TechCrunch
-from app.pipeline.embed import embed_item
+from app.pipeline.embed import embed_item, embed_text
+from app.rag.retriever import _detect_sources, _rrf_fuse, _WINDOW_DELTAS
+from app.schemas.ask import TimeWindow
 from app.schemas.item import Item
 from app.storage.db import SessionLocal
-from app.storage.vector import upsert
+from app.storage.vector import hydrate_items, keyword_search, search, upsert, vector_search
 
 logger = logging.getLogger(__name__)
 

@@ -295,3 +295,12 @@ REGISTRY: list[type[Source]] = [
     DeepMindBlog,
     Bluesky,
 ]
+
+
+LIVE_SOURCES: list[type[Source]] = [
+    HackerNews,
+    ArXiv,
+    TechCrunch,
+    AnthropicBlog,
+    OpenAIBlog,
+]
