@@ -23,6 +23,8 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CLASSIFY_PROMPT: ${{ secrets._CLASSIFY_PROMPT }}
+      SUMMARIZE_PROMPT: ${{ secrets._SUMMARIZE_PROMPT }}
     steps:
       - uses: actions/checkout@v4
 
