@@ -62,6 +62,8 @@ Articles aggregated/pulled from multiple sources:
 
 - AI Lab blogs (Anthropic, OpenAI, Deepmind)
 
+Ingestion runs automatically — an APScheduler periodic runner pulls sources concurrently in the app, and a scheduled GitHub Actions workflow (`.github/workflows/ingest.yml`) triggers ingestion for hands-off automation.
+
 ###  1.5 Deduplication
 
 Ingested articles are deduplicated before any further processing, ensuring redundant content is discarded early.
@@ -77,7 +79,11 @@ Embedded content is classified by topic, enabling fine-grained filtering downstr
 
 ##  RAG System
 
-The retrieval-augmented generation layer uses the embedded, classified content to retrieve relevant articles and generate responses based on user queries.
+The retrieval-augmented generation layer uses hybrid search (vector + keyword) to retrieve relevant articles and generate responses based on user queries.
+
+- **Vector search** — cosine similarity over pgvector HNSW-indexed chunk embeddings with a recency decay penalty
+- **Keyword search** — Postgres full-text search via `websearch_to_tsquery` over a stored `tsvector` column (GIN-indexed, title weight A / summary weight B). Supports natural language queries, quoted phrases, and negation
+- **Fusion** — Reciprocal Rank Fusion (RRF, k=60) over both lists to see if any needed boosting
 
 ##  UX
 
