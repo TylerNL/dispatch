@@ -77,6 +77,9 @@ async def _main() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    # Don't echo per-request URLs (the endpoints we hit) into the run log.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     results = await run_all()
     total = sum(results.values())
     logger.info("ingest complete: total=%d %s", total, results)
