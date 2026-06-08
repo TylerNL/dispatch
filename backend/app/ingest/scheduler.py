@@ -46,8 +46,8 @@ async def run_once(source: Source) -> int:
                 async with session.begin_nested():
                     await upsert(session, item, chunks, embeddings)
                 embedded += 1
-            except Exception:
-                logger.exception("embed/upsert failed for %s", item.id)
+            except Exception as exc:
+                logger.error("embed/upsert failed for %s (%s)", item.id, type(exc).__name__)
 
         await session.commit()
 
@@ -65,8 +65,8 @@ async def run_all() -> dict[str, int]:
         src = source_cls()
         try:
             results[src.name] = await run_once(src)
-        except Exception:
-            logger.exception("run_once failed for %s", src.name)
+        except Exception as exc:
+            logger.error("%s: ingest failed (%s)", src.name, type(exc).__name__)
             results[src.name] = 0
     return results
 
