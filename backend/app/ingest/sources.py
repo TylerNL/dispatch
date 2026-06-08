@@ -66,6 +66,8 @@ class ArXiv(Source):
     _base = "https://export.arxiv.org/api/query"
     _categories = ["cs.LG", "cs.AI", "cs.CL", "cs.CV", "cs.CR"] # cs(ml), ai, nlp, comp vision, crypto
     _max_results = 15
+    # arXiv asks clients to identify themselves; the default httpx UA gets throttled.
+    _ua = "dispatch-ingest/1.0"
 
     async def fetch(self, since: datetime | None = None) -> AsyncIterator[Item]:
         # Build query string manually — httpx encodes colons as %3A which
@@ -75,9 +77,21 @@ class ArXiv(Source):
             f"&start=0&max_results={self._max_results}"
             f"&sortBy=submittedDate&sortOrder=descending"
         )
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
+        # The export API is slow on date-sorted multi-category queries and times
+        # out intermittently — use a generous read timeout and retry once.
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            headers={"User-Agent": self._ua},
+        ) as client:
+            for attempt in range(2):
+                try:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    break
+                except httpx.ReadTimeout:
+                    if attempt == 1:
+                        raise
+                    await asyncio.sleep(3)
 
         feed = feedparser.parse(resp.text)
         for entry in feed.entries:
