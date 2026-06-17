@@ -43,7 +43,6 @@ export default function Sidebar({
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-[56px] border-b border-border shrink-0">
           <Link to="/" className="flex items-center gap-2 group">
-            <span className="w-2 h-2 rounded-full bg-accent" />
             <span className="text-[15px] font-medium tracking-[-0.015em] text-text">
               dispatch
             </span>
