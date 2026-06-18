@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { Mail, X } from 'lucide-react';
 import { useAuthModal } from '../../contexts/AuthModalContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -59,6 +59,7 @@ export default function AuthModal() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const isSignup = mode === 'signup';
 
@@ -70,6 +71,7 @@ export default function AuthModal() {
       setErrors({});
       setSubmitting(false);
       setOauthLoading(false);
+      setConfirmationSent(false);
     }
   }, [isOpen, mode]);
 
@@ -114,18 +116,27 @@ export default function AuthModal() {
 
     setSubmitting(true);
 
-    const { error } = isSignup
-      ? await signUp(email, password)
-      : await signIn(email, password);
-
-    if (error) {
-      setErrors({ general: error });
+    if (isSignup) {
+      const { error, needsConfirmation } = await signUp(email, password);
       setSubmitting(false);
+      if (error) {
+        setErrors({ general: error });
+        return;
+      }
+      if (needsConfirmation) {
+        setConfirmationSent(true);
+      } else {
+        close();
+      }
       return;
     }
 
-    
+    const { error } = await signIn(email, password);
     setSubmitting(false);
+    if (error) {
+      setErrors({ general: error });
+      return;
+    }
     close();
   }
 
@@ -183,6 +194,34 @@ export default function AuthModal() {
           </button>
         </div>
 
+        {confirmationSent ? (
+          /* Confirmation panel */
+          <div className="px-6 pt-6 pb-7">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-accent/10 mb-5">
+              <Mail className="w-5 h-5 text-accent" strokeWidth={2} />
+            </div>
+            <h2
+              id="auth-modal-title"
+              className="text-[24px] font-medium tracking-[-0.025em] text-text"
+            >
+              Check your email
+            </h2>
+            <p className="mt-2 text-[14.5px] text-text-dim leading-[1.5]">
+              We sent a confirmation link to{' '}
+              <span className="text-text font-medium">{email}</span>. Click it to
+              activate your account, then sign in.
+            </p>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={() => setMode('login')}
+              className="w-full mt-6 h-[44px] text-[15px]"
+            >
+              Back to sign in
+            </Button>
+          </div>
+        ) : (
+          <>
         {/* Title */}
         <div className="px-6 pt-6">
           <h2
@@ -310,6 +349,8 @@ export default function AuthModal() {
             </button>
           </p>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
