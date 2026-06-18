@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuthModal } from '../../contexts/AuthModalContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import GoogleIcon from '../ui/GoogleIcon';
 
 interface FormErrors {
   email?: string;
@@ -45,6 +48,8 @@ function validate(
 
 export default function AuthModal() {
   const { isOpen, mode, close, setMode } = useAuthModal();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
   const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +58,7 @@ export default function AuthModal() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   const isSignup = mode === 'signup';
 
@@ -63,10 +69,10 @@ export default function AuthModal() {
       setConfirmPassword('');
       setErrors({});
       setSubmitting(false);
+      setOauthLoading(false);
     }
   }, [isOpen, mode]);
 
-  // Focus the email input when modal opens
   useEffect(() => {
     if (isOpen) {
       // Small delay to let the DOM render and focus trap initialize
@@ -98,7 +104,7 @@ export default function AuthModal() {
     }
   }, [isOpen]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     const validationErrors = validate(email, password, confirmPassword, isSignup);
@@ -108,11 +114,29 @@ export default function AuthModal() {
 
     setSubmitting(true);
 
-    // To-do: add supabase api call
-    setTimeout(() => {
+    const { error } = isSignup
+      ? await signUp(email, password)
+      : await signIn(email, password);
+
+    if (error) {
+      setErrors({ general: error });
       setSubmitting(false);
-      close();
-    }, 1200);
+      return;
+    }
+
+    
+    setSubmitting(false);
+    close();
+  }
+
+  async function handleGoogle() {
+    setErrors({});
+    setOauthLoading(true);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      setErrors({ general: error });
+      setOauthLoading(false);
+    }
   }
 
   function toggleMode() {
@@ -176,6 +200,23 @@ export default function AuthModal() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} noValidate className="px-6 pt-6 pb-6">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleGoogle}
+            disabled={oauthLoading || submitting}
+            className="w-full h-[44px] text-[15px]"
+          >
+            <GoogleIcon className="w-[18px] h-[18px]" />
+            {oauthLoading ? 'Redirecting...' : 'Continue with Google'}
+          </Button>
+
+          <div className="flex items-center gap-3 my-5">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[12px] text-text-mute">or</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
           <div className="flex flex-col gap-4">
             <Input
               ref={emailRef}
@@ -245,6 +286,10 @@ export default function AuthModal() {
           {!isSignup && (
             <button
               type="button"
+              onClick={() => {
+                close();
+                navigate('/forgot-password');
+              }}
               className="w-full mt-3 text-center text-[13px] text-text-mute hover:text-text-dim transition-colors duration-150"
             >
               Forgot your password?
