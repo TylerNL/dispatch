@@ -7,8 +7,8 @@ const FOCUSABLE =
  * Traps keyboard focus within the referenced element while active.
  * Returns a ref to attach to the container element.
  */
-export function useFocusTrap<T extends HTMLElement>(active: boolean): RefObject<T | null> {
-  const containerRef = useRef<T | null>(null);
+export function useFocusTrap<T extends HTMLElement>(active: boolean): RefObject<T> {
+  const containerRef = useRef<T>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -20,7 +20,6 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean): RefObject<
     const container = containerRef.current;
     if (!container) return;
 
-    // Focus the first focusable element inside the container
     const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE);
     if (focusables.length > 0) {
       focusables[0].focus();

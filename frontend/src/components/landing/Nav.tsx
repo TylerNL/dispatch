@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { useAuthModal } from '../../contexts/AuthModalContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const links = [
   { label: 'How it works', href: '#how-it-works' },
@@ -13,6 +14,7 @@ const links = [
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const { open } = useAuthModal();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -49,12 +51,24 @@ export default function Nav() {
           >
             Open chat
           </Link>
-          <Button variant="ghost" onClick={() => open('login')}>
-            Sign in
-          </Button>
-          <Button variant="accent" onClick={() => open('signup')}>
-            Get the digest →
-          </Button>
+          {!loading &&
+            (user ? (
+              <Link
+                to="/profile"
+                className="text-[14px] text-text-dim hover:text-text transition-colors duration-150"
+              >
+                Profile
+              </Link>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => open('login')}>
+                  Sign in
+                </Button>
+                <Button variant="accent" onClick={() => open('signup')}>
+                  Get the digest →
+                </Button>
+              </>
+            ))}
         </div>
       </div>
     </header>

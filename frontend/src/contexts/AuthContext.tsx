@@ -20,6 +20,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
+  updateDisplayName: (fullName: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -73,6 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   }, []);
 
+  const updateDisplayName = useCallback(async (fullName: string) => {
+    const { error } = await supabase.auth.updateUser({
+      data: { full_name: fullName },
+    });
+    if (error) return { error: error.message };
+    // onAuthStateChange fires USER_UPDATED
+    return {};
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
@@ -87,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signInWithGoogle,
         resetPassword,
+        updateDisplayName,
         signOut,
       }}
     >
