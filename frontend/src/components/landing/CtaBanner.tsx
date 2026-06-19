@@ -1,9 +1,16 @@
+import { useNavigate } from 'react-router-dom';
 import SectionLabel from '../ui/SectionLabel';
 import Button from '../ui/Button';
 import { useAuthModal } from '../../contexts/AuthModalContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function CtaBanner() {
   const { open } = useAuthModal();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleGetDigest = () =>
+    user ? navigate('/profile') : open('signup');
 
   return (
     <section className="relative overflow-hidden px-5 md:px-8 pt-[120px] pb-[140px] border-t border-border">
@@ -24,7 +31,7 @@ export default function CtaBanner() {
           Your timeline is <span className="accent-italic">reading</span> this. Are you?
         </h2>
         <div className="mt-9">
-          <Button variant="accent" onClick={() => open('signup')}>
+          <Button variant="accent" onClick={handleGetDigest}>
             Get the digest →
           </Button>
         </div>
