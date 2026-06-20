@@ -12,6 +12,8 @@ class AskRequest(BaseModel):
     window: TimeWindow = "all"
     topic: str | None = None
     sources: list[str] | None = None
+    conversation_id: str | None = None
+    title: str | None = None
 
 
 class Citation(BaseModel):
