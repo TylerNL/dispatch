@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import sys
-from dataclasses import dataclass, field
 
 from app.ingest.base import Source
 from app.ingest.sources import LIVE_SOURCES

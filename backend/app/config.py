@@ -7,8 +7,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://dispatch:dispatch@localhost:5432/dispatch"
     database_url_direct: str = ""
     supabase_url: str = ""
-    supabase_key: str = "" 
+    supabase_key: str = ""
     supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""  # Supabase Settings → API → JWT Secret (HS256)
     scraperapi_key: str = ""
 
     anthropic_api_key: str = ""
