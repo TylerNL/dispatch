@@ -13,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 EMBED_DIM = 1024  # OpenAI text-embedding-3-small 1536 -> 1024
@@ -103,3 +103,47 @@ class SubscriberRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class ConversationRow(Base):
+    __tablename__ = "conversations"
+    __table_args__ = (
+        Index("ix_conversations_user_updated", "user_id", "updated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # uuid4 hex
+    user_id: Mapped[str] = mapped_column(String, index=True) 
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    messages: Mapped[list["MessageRow"]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+
+
+class MessageRow(Base):
+    __tablename__ = "messages"
+    __table_args__ = (
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # uuid4 hex
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String)  # 'user' | 'assistant'
+    content: Mapped[str] = mapped_column(Text)
+    citations: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # snapshot
+    parent_message_id: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )  # branching-ready (unused for now)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    conversation: Mapped[ConversationRow] = relationship(back_populates="messages")
