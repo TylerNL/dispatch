@@ -1,97 +1,72 @@
-
-# DISPATCH
-
-  
+# Dispatch
 
 Dispatch is intended to be a centralized aggregation of tech news.
 
 Start-up news, major AI labs, and other general tech information all condensed into one email. Additionally, Dispatch has a RAG system to answer questions over the same index w/ citations to answer any questions about articles or other general questions regarding the news listed.
 
-  
-
-WANT: Make users be able to personalized their email/feed through a filter system since, for example, one may only want big AI lab news (Anthropic, Deepmind, etc.)
-
-  
-  
-
 ## Repo layout
 
-  
-
-
-design.md landing-page spec (copy, tokens, component tree)
-
-frontend/ Vite + React + TypeScript + Tailwind landing page
-
-backend/ FastAPI + SQLAlchemy + pgvector RAG service (Claude generation, OpenAI embeddings)
-
-
-  
-
-## Quick start
-
-  
-To be deployed (likely via vercel + Render)
-
-  
+```
+design.md                     landing-page spec (copy, tokens, component tree)
+frontend/                     Vite + React + TypeScript + Tailwind — landing, auth, chat, profile
+backend/                      FastAPI + SQLAlchemy + pgvector RAG service (see backend/README.md)
+.github/workflows/ingest.yml  nightly ingestion cron
+```
 
 ## Stack
 
-  
-
-- **Frontend:** React, Vite, Tailwind CSS, Geist, lucide-react
-
+- **Frontend:** React, Vite, TypeScript, Tailwind CSS, lucide-react, React Router
 - **Backend:** Python 3.13, FastAPI, async SQLAlchemy, Postgres + pgvector, Alembic
+- **Auth:** Supabase Auth (email/password + Google OAuth), JWT-verified on the API
+- **Models:** OpenAI GPT-4.1 Nano (generation, classification, summaries) · `text-embedding-3-small` @ 1024-dim (embeddings)
 
-- **Models:** OpenAI GPT-4.1 Nano for generation, OpenAI `text-embedding-3-small` (1024-dim) for embeddings
+## How it works
 
-  
+### Ingestion → index
 
-## Status / How it Works
+Nightly, a scheduled GitHub Actions workflow (`.github/workflows/ingest.yml`) runs the pipeline across the live sources:
 
+1. **Fetch** — TechCrunch, Hacker News, arXiv, and AI-lab blogs (Anthropic, OpenAI; DeepMind planned)
+2. **Deduplicate** — URL-fingerprint check drops redundant articles before any LLM cost
+3. **Summarize** — concise per-article summaries
+4. **Classify** — topic + signal score, enabling fine-grained filtering downstream
+5. **Embed & store** — chunk embeddings written into pgvector (HNSW, cosine)
 
-###  1. Ingestion
+### RAG chat
 
-Articles aggregated/pulled from multiple sources:
+Hybrid retrieval with streamed, cited answers:
 
-- TechCrunch (Start-ups)
+- **Vector search** — cosine similarity over HNSW-indexed chunk embeddings with a recency-decay penalty
+- **Keyword search** — Postgres full-text search via `websearch_to_tsquery` over a GIN-indexed `tsvector` column (title weight A / summary weight B); supports natural-language queries, quoted phrases, and negation
+- **Fusion** — Reciprocal Rank Fusion (RRF, k=60) over both ranked lists
+- **Generation** — streamed (SSE) answers with inline `[n]` citations mapped back to source items
 
-- Hacker News (Also Start-ups)
+### Accounts & persistence
 
-- ArXiv (Research papers)
-
-- AI Lab blogs (Anthropic, OpenAI, Deepmind)
-
-Ingestion runs automatically — an APScheduler periodic runner pulls sources concurrently in the app, and a scheduled GitHub Actions workflow (`.github/workflows/ingest.yml`) triggers ingestion for hands-off automation.
-
-###  1.5 Deduplication
-
-Ingested articles are deduplicated before any further processing, ensuring redundant content is discarded early.
-
-###  2. Embedding
-
-Deduplicated articles and their summaries are embedded into vector representations for semantic search and retrieval using OpenAI's embedding model.
-
-###  3. Classification
-
-Embedded content is classified by topic, enabling fine-grained filtering downstream.
+- **Auth** — Supabase sign-in (email/password + Google); the API verifies the Supabase JWT on every chat request
+- **Chat history** — conversations are saved per user: deep-linkable (`/chat/:id`), restored on refresh, synced across devices, with model-generated titles (via same GPT model)
+- **Profile** — editable display name and topic-preference selection
 
 
-##  RAG System
+## Quick start
 
-The retrieval-augmented generation layer uses hybrid search (vector + keyword) to retrieve relevant articles and generate responses based on user queries.
+The frontend and backend run separately.
 
-- **Vector search** — cosine similarity over pgvector HNSW-indexed chunk embeddings with a recency decay penalty
-- **Keyword search** — Postgres full-text search via `websearch_to_tsquery` over a stored `tsvector` column (GIN-indexed, title weight A / summary weight B). Supports natural language queries, quoted phrases, and negation
-- **Fusion** — Reciprocal Rank Fusion (RRF, k=60) over both lists to see if any needed boosting
+**Backend** (details in `backend/README.md`):
 
-##  UX
+```bash
+cd backend
+uv sync
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-###  Authentication (supabase auth)
+**Frontend:**
 
-Users log in to access a personalized newsletter experience. (Sent out at 8AM PST)
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-###  Preference Filtering
-
-Once authenticated, users can select which topics they want to see. The classification metadata is used to filter out unwanted topics before the newsletter is assembled and delivered.
-
+Deployment TBD (To Be Deployed): planned via Vercel (frontend) + Render (backend).
