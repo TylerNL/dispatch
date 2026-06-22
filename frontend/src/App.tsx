@@ -10,6 +10,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/chat" element={<ChatPage />} />
+      <Route path="/chat/:id" element={<ChatPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />

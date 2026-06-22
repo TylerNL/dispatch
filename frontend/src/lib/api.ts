@@ -1,11 +1,55 @@
-import type { AskRequest, Citation, SSEEvent } from '../types/ask';
+import type {
+  AskRequest,
+  Citation,
+  ConversationDetail,
+  ConversationSummary,
+  SSEEvent,
+} from '../types/ask';
 
 export const API_URL =
   import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+function authHeaders(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function listConversations(
+  token: string,
+): Promise<ConversationSummary[]> {
+  const res = await fetch(`${API_URL}/conversations`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error('Failed to load conversations');
+  return res.json();
+}
+
+export async function getConversation(
+  id: string,
+  token: string,
+): Promise<ConversationDetail> {
+  const res = await fetch(`${API_URL}/conversations/${id}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error('Failed to load conversation');
+  return res.json();
+}
+
+export async function deleteConversation(
+  id: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/conversations/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error('Failed to delete conversation');
+}
+
 interface StreamCallbacks {
+  onMeta?: (conversationId: string) => void;
   onDelta: (text: string) => void;
   onCitations: (citations: Citation[]) => void;
+  onTitle?: (title: string) => void;
   onDone: () => void;
   onError: (error: string) => void;
 }
@@ -16,6 +60,7 @@ interface StreamCallbacks {
  */
 export function streamAsk(
   request: AskRequest,
+  token: string,
   callbacks: StreamCallbacks,
 ): AbortController {
   const controller = new AbortController();
@@ -24,7 +69,7 @@ export function streamAsk(
     try {
       const res = await fetch(`${API_URL}/ask/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify(request),
         signal: controller.signal,
       });
@@ -60,6 +105,18 @@ export function streamAsk(
               callbacks.onDelta(event.text);
             } else if (event.type === 'citations') {
               callbacks.onCitations(event.citations);
+            } else if (event.type === 'meta') {
+              callbacks.onMeta?.(event.conversation_id);
+            } else if (event.type === 'title') {
+              callbacks.onTitle?.(event.title);
+            } else if (event.type === 'error') {
+              callbacks.onError(
+                event.error === 'forbidden'
+                  ? "You don't have access to this conversation."
+                  : 'Something went wrong — try again.',
+              );
+              callbacks.onDone();
+              return;
             }
           } catch {
             // Malformed JSON line — skip it

@@ -1,11 +1,18 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Menu, Sparkles } from 'lucide-react';
 import { chips } from '../../lib/chips';
-import { streamAsk } from '../../lib/api';
+import {
+  deleteConversation,
+  getConversation,
+  listConversations,
+  streamAsk,
+} from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
 import type {
   ChatMessage,
   Citation,
-  Conversation,
+  ConversationSummary,
   TimeWindow,
 } from '../../types/ask';
 import Sidebar from './Sidebar';
@@ -24,138 +31,121 @@ function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Replace the last assistant message in the list via an updater.
+function patchLastAssistant(
+  messages: ChatMessage[],
+  patch: (m: ChatMessage) => ChatMessage,
+): ChatMessage[] {
+  const msgs = [...messages];
+  const last = msgs[msgs.length - 1];
+  if (last?.role === 'assistant') msgs[msgs.length - 1] = patch(last);
+  return msgs;
+}
+
 export default function ChatPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const { user, loading, session } = useAuth();
+  const token = session?.access_token;
+  const { id: routeId } = useParams();
+  const navigate = useNavigate();
+
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('all');
   const abortRef = useRef<AbortController | null>(null);
+  const loadedRef = useRef<string | null>(null); 
 
-  const activeConv = conversations.find((c) => c.id === activeId) ?? null;
-  const messages = activeConv?.messages ?? [];
+  useEffect(() => {
+    if (!token) return;
+    listConversations(token).then(setConversations).catch(() => {});
+  }, [token]);
 
-
-  const ensureConversation = useCallback(
-    (firstMessage: string): string => {
-      if (activeId) return activeId;
-      const id = createId();
-      const title =
-        firstMessage.length > 60
-          ? firstMessage.slice(0, 60) + '...'
-          : firstMessage;
-      const newConv: Conversation = {
-        id,
-        title,
-        messages: [],
-        createdAt: Date.now(),
-      };
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveId(id);
-      return id;
-    },
-    [activeId],
-  );
+  useEffect(() => {
+    if (!token) return;
+    if (!routeId) {
+      setMessages([]);
+      loadedRef.current = null;
+      return;
+    }
+    if (loadedRef.current === routeId) return;
+    getConversation(routeId, token)
+      .then((detail) => {
+        setMessages(
+          detail.messages.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            citations: m.citations ?? undefined,
+          })),
+        );
+        loadedRef.current = routeId;
+      })
+      .catch(() => navigate('/chat'));
+  }, [routeId, token, navigate]);
 
   const handleSend = useCallback(
     (text: string) => {
-      if (isStreaming) return;
+      if (isStreaming || !token) return;
 
-      const convId = ensureConversation(text);
-      const userMsg: ChatMessage = {
-        id: createId(),
-        role: 'user',
-        content: text,
-      };
+      const convId = routeId ?? crypto.randomUUID();
+      const title = text.length > 60 ? text.slice(0, 60) + '...' : text;
+
+      if (!routeId) {
+        loadedRef.current = convId;
+        setConversations((prev) => [
+          { id: convId, title, updated_at: new Date().toISOString() },
+          ...prev,
+        ]);
+        navigate(`/chat/${convId}`);
+      }
+
+      const userMsg: ChatMessage = { id: createId(), role: 'user', content: text };
       const assistantMsg: ChatMessage = {
         id: createId(),
         role: 'assistant',
         content: '',
         isStreaming: true,
       };
-
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? { ...c, messages: [...c.messages, userMsg, assistantMsg] }
-            : c,
-        ),
-      );
-
+      setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsStreaming(true);
 
-      const controller = streamAsk(
-        { question: text, window: timeWindow },
+      abortRef.current = streamAsk(
+        { question: text, window: timeWindow, conversation_id: convId, title },
+        token,
         {
-          onDelta: (chunk) => {
+          onDelta: (chunk) =>
+            setMessages((prev) =>
+              patchLastAssistant(prev, (m) => ({ ...m, content: m.content + chunk })),
+            ),
+          onCitations: (citations: Citation[]) =>
+            setMessages((prev) => patchLastAssistant(prev, (m) => ({ ...m, citations }))),
+          onTitle: (newTitle) =>
             setConversations((prev) =>
-              prev.map((c) => {
-                if (c.id !== convId) return c;
-                const msgs = [...c.messages];
-                const last = msgs[msgs.length - 1];
-                if (last.role === 'assistant') {
-                  msgs[msgs.length - 1] = {
-                    ...last,
-                    content: last.content + chunk,
-                  };
-                }
-                return { ...c, messages: msgs };
-              }),
-            );
-          },
-          onCitations: (citations: Citation[]) => {
-            setConversations((prev) =>
-              prev.map((c) => {
-                if (c.id !== convId) return c;
-                const msgs = [...c.messages];
-                const last = msgs[msgs.length - 1];
-                if (last.role === 'assistant') {
-                  msgs[msgs.length - 1] = { ...last, citations };
-                }
-                return { ...c, messages: msgs };
-              }),
-            );
-          },
+              prev.map((c) => (c.id === convId ? { ...c, title: newTitle } : c)),
+            ),
           onDone: () => {
-            setConversations((prev) =>
-              prev.map((c) => {
-                if (c.id !== convId) return c;
-                const msgs = [...c.messages];
-                const last = msgs[msgs.length - 1];
-                if (last.role === 'assistant') {
-                  msgs[msgs.length - 1] = { ...last, isStreaming: false };
-                }
-                return { ...c, messages: msgs };
-              }),
+            setMessages((prev) =>
+              patchLastAssistant(prev, (m) => ({ ...m, isStreaming: false })),
             );
             setIsStreaming(false);
             abortRef.current = null;
           },
           onError: (error) => {
-            setConversations((prev) =>
-              prev.map((c) => {
-                if (c.id !== convId) return c;
-                const msgs = [...c.messages];
-                const last = msgs[msgs.length - 1];
-                if (last.role === 'assistant') {
-                  msgs[msgs.length - 1] = {
-                    ...last,
-                    content: error,
-                    isStreaming: false,
-                  };
-                }
-                return { ...c, messages: msgs };
-              }),
+            setMessages((prev) =>
+              patchLastAssistant(prev, (m) => ({
+                ...m,
+                content: error,
+                isStreaming: false,
+              })),
             );
             setIsStreaming(false);
             abortRef.current = null;
           },
         },
       );
-
-      abortRef.current = controller;
     },
-    [isStreaming, ensureConversation, timeWindow],
+    [isStreaming, token, routeId, timeWindow, navigate],
   );
 
   const handleStop = useCallback(() => {
@@ -164,25 +154,50 @@ export default function ChatPage() {
   }, []);
 
   const handleNewChat = useCallback(() => {
-    setActiveId(null);
-    setIsStreaming(false);
     abortRef.current?.abort();
     abortRef.current = null;
-  }, []);
+    setIsStreaming(false);
+    navigate('/chat');
+  }, [navigate]);
 
-  const handleSelectConversation = useCallback((id: string) => {
-    setActiveId(id);
-  }, []);
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (id === routeId) return;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setIsStreaming(false);
+      navigate(`/chat/${id}`);
+    },
+    [routeId, navigate],
+  );
 
-  const conversationTitle = activeConv?.title ?? 'New conversation';
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (!token) return;
+      deleteConversation(id, token)
+        .then(() => {
+          setConversations((prev) => prev.filter((c) => c.id !== id));
+          if (routeId === id) navigate('/chat');
+        })
+        .catch(() => {});
+    },
+    [token, routeId, navigate],
+  );
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/" replace />;
+
+  const conversationTitle =
+    conversations.find((c) => c.id === routeId)?.title ?? 'New conversation';
 
   return (
     <div className="flex h-screen bg-bg text-text overflow-hidden">
       <Sidebar
         conversations={conversations}
-        activeId={activeId}
-        onSelect={handleSelectConversation}
+        activeId={routeId ?? null}
+        onSelect={handleSelect}
         onNew={handleNewChat}
+        onDelete={handleDelete}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -231,16 +246,11 @@ export default function ChatPage() {
         )}
 
         {/* Input bar */}
-        <ChatInput
-          onSend={handleSend}
-          onStop={handleStop}
-          isStreaming={isStreaming}
-        />
+        <ChatInput onSend={handleSend} onStop={handleStop} isStreaming={isStreaming} />
       </div>
     </div>
   );
 }
-
 
 function EmptyState({ onPrompt }: { onPrompt: (text: string) => void }) {
   return (

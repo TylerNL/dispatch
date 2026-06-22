@@ -22,6 +22,13 @@ export interface AskRequest {
   window?: TimeWindow;
   topic?: Topic | null;
   sources?: string[] | null;
+  conversation_id?: string;
+  title?: string | null;
+}
+
+export interface MetaEvent {
+  type: 'meta';
+  conversation_id: string;
 }
 
 export interface DeltaEvent {
@@ -34,7 +41,22 @@ export interface CitationsEvent {
   citations: Citation[];
 }
 
-export type SSEEvent = DeltaEvent | CitationsEvent;
+export interface TitleEvent {
+  type: 'title';
+  title: string;
+}
+
+export interface ErrorEvent {
+  type: 'error';
+  error: string;
+}
+
+export type SSEEvent =
+  | MetaEvent
+  | DeltaEvent
+  | CitationsEvent
+  | TitleEvent
+  | ErrorEvent;
 
 export interface ChatMessage {
   id: string;
@@ -49,4 +71,24 @@ export interface Conversation {
   title: string;
   messages: ChatMessage[];
   createdAt: number;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string | null;
+  updated_at: string;
+}
+
+export interface MessageOut {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: Citation[] | null;
+  created_at: string;
+}
+
+export interface ConversationDetail {
+  id: string;
+  title: string | null;
+  messages: MessageOut[];
 }
