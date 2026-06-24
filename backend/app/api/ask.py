@@ -23,7 +23,10 @@ def _sse(payload: dict) -> str:
 
 
 @router.post("/ask", response_model=AskResponse)
-async def ask(req: AskRequest) -> AskResponse:
+async def ask(
+    req: AskRequest,
+    user_id: str = Depends(get_current_user),
+) -> AskResponse:
     t0 = time.perf_counter()
     context = await retrieve(req.question, window=req.window, topic=req.topic, sources=req.sources)
     resp = await generate(req.question, context)

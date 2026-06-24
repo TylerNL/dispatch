@@ -21,7 +21,8 @@ def create_app() -> FastAPI:
     app.include_router(chats.router, prefix="/api")
     app.include_router(digest.router, prefix="/api")
     app.include_router(sources.router, prefix="/api")
-    app.include_router(debug.router, prefix="/api")
+    if settings.environment != "production":
+        app.include_router(debug.router, prefix="/api")
 
     return app
 
