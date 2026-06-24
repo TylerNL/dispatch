@@ -159,6 +159,39 @@ async def keyword_search(
     return [(row.id, row.kw_rank) for row in rows]
 
 
+async def recent_items(
+    session: AsyncSession,
+    since: datetime,
+    until: datetime | None = None,
+    limit: int = 200,
+) -> list[Item]:
+    """Items ingested in [since, until), best score first. Keyed on created_at
+    (ingest time)."""
+    stmt = select(ItemRow).where(ItemRow.created_at >= since)
+    if until is not None:
+        stmt = stmt.where(ItemRow.created_at < until)
+    # First by score then date created
+    stmt = stmt.order_by(
+        ItemRow.score.desc().nulls_last(), ItemRow.created_at.desc()
+    ).limit(limit)
+    rows = (await session.execute(stmt)).scalars().all()
+    return [
+        Item(
+            id=r.id,
+            source=r.source,
+            external_id=r.external_id,
+            url=r.url,
+            title=r.title,
+            author=r.author,
+            published_at=r.published_at,
+            summary=r.summary,
+            topic=r.topic,
+            score=r.score,
+        )
+        for r in rows
+    ]
+
+
 async def hydrate_items(
     session: AsyncSession,
     item_ids: list[str],
