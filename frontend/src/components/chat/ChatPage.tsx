@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Menu, Sparkles } from 'lucide-react';
 import { chips } from '../../lib/chips';
 import {
@@ -43,7 +43,7 @@ function patchLastAssistant(
 }
 
 export default function ChatPage() {
-  const { user, loading, session } = useAuth();
+  const { session } = useAuth();
   const token = session?.access_token;
   const { id: routeId } = useParams();
   const navigate = useNavigate();
@@ -183,9 +183,6 @@ export default function ChatPage() {
     },
     [token, routeId, navigate],
   );
-
-  if (loading) return null;
-  if (!user) return <Navigate to="/" replace />;
 
   const conversationTitle =
     conversations.find((c) => c.id === routeId)?.title ?? 'New conversation';
