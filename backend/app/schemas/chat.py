@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.ask import Citation
 
@@ -26,4 +26,4 @@ class ConversationDetail(BaseModel):
 
 
 class RenameRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=200)
