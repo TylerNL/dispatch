@@ -47,7 +47,7 @@ function validate(
 }
 
 export default function AuthModal() {
-  const { isOpen, mode, close, setMode } = useAuthModal();
+  const { isOpen, mode, returnTo, close, setMode } = useAuthModal();
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
@@ -106,6 +106,12 @@ export default function AuthModal() {
     }
   }, [isOpen]);
 
+  function completeAuth() {
+    const destination = returnTo;
+    close();
+    if (destination) navigate(destination, { replace: true });
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
@@ -126,7 +132,7 @@ export default function AuthModal() {
       if (needsConfirmation) {
         setConfirmationSent(true);
       } else {
-        close();
+        completeAuth();
       }
       return;
     }
@@ -137,7 +143,7 @@ export default function AuthModal() {
       setErrors({ general: error });
       return;
     }
-    close();
+    completeAuth();
   }
 
   async function handleGoogle() {
