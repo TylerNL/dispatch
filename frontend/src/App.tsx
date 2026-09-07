@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import ChatPage from './components/chat/ChatPage';
 import ProfilePage from './pages/ProfilePage';
@@ -28,12 +28,17 @@ export default function App() {
 function ChatRoute() {
   const { user, loading } = useAuth();
   const { open } = useAuthModal();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const authenticated = !loading && user !== null;
+  const signedOut = !loading && user === null;
 
   useEffect(() => {
-    if (loading || user) return;
-    open('login');
-  }, [loading, user, open]);
+    if (!signedOut) return;
+    open('login', location.pathname);
+    navigate('/', { replace: true });
+  }, [signedOut, location.pathname, open, navigate]);
 
-  if (loading) return null;
-  return user ? <ChatPage /> : <LandingPage />;
+  return authenticated ? <ChatPage /> : null;
 }
