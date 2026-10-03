@@ -104,7 +104,7 @@ DigestSection      { topic: Topic, items: Item[] }
 Item               { id, source, external_id?, url, title, author?, published_at, summary?, topic?, score? }
 SourceStatus       { name, last_pulled_at?: datetime, items_today: int, healthy: bool }
 
-Topic = research | labs | startups | community | security | signal
+Topic = research | labs | startups | security | tooling
 ```
 
 ## Pipeline (ingest → index)

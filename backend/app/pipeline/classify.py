@@ -41,8 +41,8 @@ async def classify(item: Item) -> tuple[Topic, float]:
 
     topic = data["topic"]
     if topic not in _VALID_TOPICS:
-        logger.warning("invalid topic %r for %s, defaulting to community", topic, item.id)
-        topic = "community"
+        logger.warning("invalid topic %r for %s, defaulting to tooling", topic, item.id)
+        topic = "tooling"
 
     score = max(0.0, min(1.0, float(data["score"])))
     return topic, score
@@ -67,6 +67,6 @@ async def classify_batch(items: list[Item]) -> list[tuple[Topic, float]]:
                 return await classify(item)
             except Exception:
                 logger.exception("classify failed for %s", item.id)
-                return ("community", 0.5)
+                return ("tooling", 0.5)
 
     return list(await asyncio.gather(*(_one(item) for item in items)))

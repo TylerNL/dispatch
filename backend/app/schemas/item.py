@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 
-Topic = Literal["research", "labs", "startups", "community", "security", "signal"]
+Topic = Literal["research", "labs", "startups", "security", "tooling"]
 
 
 class Item(BaseModel): # Title, topic, summary, score 

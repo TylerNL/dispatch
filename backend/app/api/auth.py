@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from functools import lru_cache
 
 import jwt
@@ -13,13 +14,21 @@ logger = logging.getLogger(__name__)
 _AUDIENCE = "authenticated"
 
 
+@dataclass(frozen=True)
+class AuthenticatedUser:
+    id: str
+    email: str | None
+
+
 @lru_cache(maxsize=1)
 def _jwk_client() -> PyJWKClient:
     return PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
 
 
-async def get_current_user(authorization: str = Header(default="")) -> str:
-    """Verify the Supabase access token and return the user id (the `sub` claim)."""
+async def get_authenticated_user(
+    authorization: str = Header(default=""),
+) -> AuthenticatedUser:
+    """Verify a Supabase access token and return its trusted identity claims."""
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="Missing bearer token")
@@ -46,4 +55,4 @@ async def get_current_user(authorization: str = Header(default="")) -> str:
     user_id = claims.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Token missing subject")
-    return user_id
+    return AuthenticatedUser(id=user_id, email=claims.get("email"))
