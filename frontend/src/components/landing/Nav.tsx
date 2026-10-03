@@ -25,7 +25,7 @@ export default function Nav() {
 
   return (
     <header
-      className={`sticky top-0 z-50 backdrop-blur-md bg-bg/70 transition-colors duration-200 ${
+      className={`sticky top-0 z-50 bg-bg/95 transition-colors duration-200 ${
         scrolled ? 'border-b border-border' : 'border-b border-transparent'
       }`}
     >
@@ -64,7 +64,7 @@ export default function Nav() {
                 <Button variant="ghost" onClick={() => open('login')}>
                   Sign in
                 </Button>
-                <Button variant="accent" onClick={() => open('signup')}>
+                <Button variant="contrast" onClick={() => open('signup')}>
                   Get the digest →
                 </Button>
               </>

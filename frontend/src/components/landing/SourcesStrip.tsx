@@ -9,11 +9,8 @@ export default function SourcesStrip() {
         <ul className="flex flex-wrap items-center justify-center gap-2.5">
           {sources.map((s) => (
             <li key={s}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-bg-elev border border-border px-3.5 py-1.5 text-[13px] text-text-dim hover:border-border-hover hover:text-text transition-colors duration-150">
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="absolute inset-0 rounded-full bg-green animate-dot-pulse" />
-                  <span className="relative rounded-full bg-green w-1.5 h-1.5" />
-                </span>
+              <span className="inline-flex items-center gap-2 rounded-md border border-border px-3.5 py-1.5 text-[13px] text-text-dim hover:border-border-hover hover:text-text transition-colors duration-150">
+                <span className="w-1 h-1 bg-text-mute" />
                 {s}
               </span>
             </li>

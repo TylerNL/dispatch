@@ -84,7 +84,7 @@ export default function AskSection() {
           kicker="Ask the index"
           title={
             <>
-              Don&apos;t scroll. <span className="accent-italic">Ask.</span>
+              Don&apos;t scroll. <span className="editorial-italic">Ask.</span>
             </>
           }
           description="Chat with everything dispatch indexed today, this week, or this year. Every answer cites its sources."
@@ -93,14 +93,14 @@ export default function AskSection() {
 
         <div
           ref={boxRef}
-          className="mt-14 w-full max-w-[780px] rounded-2xl bg-bg-card border border-border transition-colors duration-200 focus-within:border-accent"
+          className="mt-14 w-full max-w-[780px] rounded-xl bg-bg-card border border-border transition-colors duration-200 focus-within:border-text-dim"
         >
           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
             <span className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-text-mute">
               dispatch / ask
             </span>
             <span className="inline-flex items-center gap-2 font-mono text-[11.5px] text-text-mute">
-              <span className="w-1.5 h-1.5 rounded-full bg-green animate-dot-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-text-mute" />
               2,431 items indexed today
             </span>
           </div>
@@ -108,7 +108,7 @@ export default function AskSection() {
             onSubmit={handleSubmit}
             className="flex items-center gap-3 px-5 py-4"
           >
-            <span className="text-accent text-[18px] font-medium select-none">?</span>
+            <span className="text-text-dim text-[18px] font-medium select-none">?</span>
             <input
               ref={inputRef}
               type="text"
@@ -118,7 +118,7 @@ export default function AskSection() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1 rounded-full bg-accent text-bg hover:bg-accent-hover px-3.5 h-8 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-md bg-text text-bg hover:bg-white px-3.5 h-8 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50"
             >
               {loading ? '...' : 'Ask →'}
             </button>
@@ -158,7 +158,7 @@ export default function AskSection() {
               key={chip}
               type="button"
               onClick={() => handleChip(chip)}
-              className="rounded-full bg-bg-elev border border-border px-3 py-1.5 text-[12.5px] text-text-dim hover:border-border-hover hover:text-text transition-colors duration-150"
+              className="rounded-md border border-border px-3 py-1.5 text-[12.5px] text-text-dim hover:border-border-hover hover:text-text transition-colors duration-150"
             >
               {chip}
             </button>

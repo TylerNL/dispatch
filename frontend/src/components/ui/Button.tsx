@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'primary' | 'accent' | 'ghost';
+type Variant = 'primary' | 'accent' | 'contrast' | 'ghost';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -13,6 +13,8 @@ const base =
 const variants: Record<Variant, string> = {
   accent:
     'bg-accent text-bg hover:bg-accent-hover px-[18px] h-[42px] shadow-[0_0_0_1px_rgba(232,163,61,0.25),0_8px_24px_-8px_rgba(232,163,61,0.4)]',
+  contrast:
+    'bg-text text-bg border border-text hover:bg-white px-[18px] h-[42px]',
   primary:
     'bg-bg-elev text-text border border-border hover:border-border-hover px-[18px] h-[42px]',
   ghost:

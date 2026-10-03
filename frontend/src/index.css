@@ -19,7 +19,7 @@
   }
 
   ::selection {
-    background-color: rgba(232, 163, 61, 0.3);
+    background-color: rgba(242, 241, 238, 0.18);
     color: #f2f1ee;
   }
 }
@@ -36,8 +36,8 @@
     line-height: 0.98;
   }
 
-  .accent-italic {
-    color: #e8a33d;
+  .editorial-italic {
+    color: inherit;
     font-style: italic;
     font-weight: 400;
   }
