@@ -37,7 +37,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10">
           <div>
             <a href="#" className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-accent" />
+              <span className="w-2 h-2 border border-text-dim" />
               <span className="text-[17px] font-medium tracking-[-0.015em]">
                 dispatch
               </span>

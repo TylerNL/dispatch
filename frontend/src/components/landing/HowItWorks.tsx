@@ -10,7 +10,7 @@ export default function HowItWorks() {
           title={
             <>
               Everything you need to keep up with tech —{' '}
-              <span className="accent-italic">in one place.</span>
+              <span className="editorial-italic">in one place.</span>
             </>
           }
           description="Three things happen every morning before you open your laptop. None of them require you to open twelve tabs."
