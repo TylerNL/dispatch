@@ -25,10 +25,10 @@ export const cards: CardItem[] = [
     body: 'TechCrunch and Crunchbase filtered for signal: meaningful rounds, real launches, not press-release noise.',
   },
   {
-    tag: 'Community',
+    tag: 'Tooling',
     tint: 'amber',
-    title: 'What HN & Lobsters are reading',
-    body: 'The top stories and their top comments, summarized. Know what your timeline will be arguing about by lunch.',
+    title: 'Tools worth trying',
+    body: 'Frameworks, SDKs, infrastructure, and workflow releases that change how teams build.',
   },
   {
     tag: 'Security',

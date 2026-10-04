@@ -13,9 +13,8 @@ export type Topic =
   | 'research'
   | 'labs'
   | 'startups'
-  | 'community'
   | 'security'
-  | 'signal';
+  | 'tooling';
 
 export interface AskRequest {
   question: string;

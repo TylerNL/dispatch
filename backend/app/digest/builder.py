@@ -17,17 +17,15 @@ _TOPIC_ORDER: list[Topic] = [
     "labs",
     "research",
     "startups",
-    "community",
     "security",
-    "signal",
+    "tooling",
 ]
 _TOPIC_LABELS: dict[str, str] = {
     "labs": "AI Labs",
     "research": "Research",
     "startups": "Startups",
-    "community": "Community",
     "security": "Security",
-    "signal": "Signal",
+    "tooling": "Tooling",
 }
 
 

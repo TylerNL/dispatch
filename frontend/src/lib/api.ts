@@ -9,8 +9,43 @@ import type {
 export const API_URL =
   import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+export type DigestTopic =
+  | 'research'
+  | 'labs'
+  | 'startups'
+  | 'security'
+  | 'tooling';
+
+export interface SubscriberPreferences {
+  enabled: boolean;
+  topics: DigestTopic[];
+}
+
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
+}
+
+export async function getSubscriberPreferences(
+  token: string,
+): Promise<SubscriberPreferences> {
+  const res = await fetch(`${API_URL}/preferences`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error('Failed to load digest preferences');
+  return res.json();
+}
+
+export async function updateSubscriberPreferences(
+  token: string,
+  preferences: SubscriberPreferences,
+): Promise<SubscriberPreferences> {
+  const res = await fetch(`${API_URL}/preferences`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+    body: JSON.stringify(preferences),
+  });
+  if (!res.ok) throw new Error('Failed to save digest preferences');
+  return res.json();
 }
 
 export async function listConversations(

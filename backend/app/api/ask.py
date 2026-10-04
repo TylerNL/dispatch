@@ -5,7 +5,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.api.auth import get_current_user
+from app.api.auth import AuthenticatedUser, get_authenticated_user
 from app.rag.generator import _build_citations, generate, generate_stream
 from app.rag.retriever import retrieve
 from app.rag.titler import generate_title
@@ -25,7 +25,7 @@ def _sse(payload: dict) -> str:
 @router.post("/ask", response_model=AskResponse)
 async def ask(
     req: AskRequest,
-    user_id: str = Depends(get_current_user),
+    _user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> AskResponse:
     t0 = time.perf_counter()
     context = await retrieve(req.question, window=req.window, topic=req.topic, sources=req.sources)
@@ -37,7 +37,7 @@ async def ask(
 @router.post("/ask/stream")
 async def ask_stream(
     req: AskRequest,
-    user_id: str = Depends(get_current_user),
+    user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> StreamingResponse:
     if not req.conversation_id:
         raise HTTPException(status_code=422, detail="conversation_id is required")
@@ -51,7 +51,7 @@ async def ask_stream(
         async with SessionLocal() as session:
             try:
                 conv = await chats.get_or_create_conversation(
-                    session, user_id, req.conversation_id, req.title
+                    session, user.id, req.conversation_id, req.title
                 )
             except chats.NotOwner:
                 yield _sse({"type": "error", "error": "forbidden"})
@@ -80,7 +80,7 @@ async def ask_stream(
                 if is_first and answer:
                     try:
                         title = await generate_title(req.question, answer)
-                        await chats.rename_conversation(session, user_id, conv.id, title)
+                        await chats.rename_conversation(session, user.id, conv.id, title)
                         yield _sse({"type": "title", "title": title})
                     except Exception:
                         logger.exception("title generation failed for %s", conv.id)
