@@ -10,7 +10,7 @@ export default function WhatsInside() {
           kicker="What's inside"
           title={
             <>
-              Four topics. <span className="editorial-italic">Zero noise.</span>
+              Five topics. <span className="editorial-italic">Zero noise.</span>
             </>
           }
           description="Every item is classified, ranked, and linked back to the original source. Skip what you don't care about."
