@@ -1,0 +1,62 @@
+name: backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Backfill operation
+        required: true
+        type: choice
+        options:
+          - incomplete
+          - reclassify-fallbacks
+      batch_size:
+        description: Items processed per batch
+        required: true
+        default: "25"
+        type: choice
+        options:
+          - "10"
+          - "25"
+          - "50"
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CLASSIFY_PROMPT: ${{ secrets._CLASSIFY_PROMPT }}
+      SUMMARIZE_PROMPT: ${{ secrets._SUMMARIZE_PROMPT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Backfill incomplete items
+        if: inputs.mode == 'incomplete'
+        run: uv run python -m app.pipeline.backfill --batch-size "${{ inputs.batch_size }}"
+
+      - name: Reclassify fallback items
+        if: inputs.mode == 'reclassify-fallbacks'
+        run: >-
+          uv run python -m app.pipeline.backfill
+          --batch-size "${{ inputs.batch_size }}"
+          --reclassify-fallbacks
