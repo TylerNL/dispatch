@@ -3,13 +3,6 @@ name: backfill
 on:
   workflow_dispatch:
     inputs:
-      mode:
-        description: Backfill operation
-        required: true
-        type: choice
-        options:
-          - incomplete
-          - reclassify-fallbacks
       batch_size:
         description: Items processed per batch
         required: true
@@ -51,12 +44,4 @@ jobs:
         run: uv sync
 
       - name: Backfill incomplete items
-        if: inputs.mode == 'incomplete'
         run: uv run python -m app.pipeline.backfill --batch-size "${{ inputs.batch_size }}"
-
-      - name: Reclassify fallback items
-        if: inputs.mode == 'reclassify-fallbacks'
-        run: >-
-          uv run python -m app.pipeline.backfill
-          --batch-size "${{ inputs.batch_size }}"
-          --reclassify-fallbacks
