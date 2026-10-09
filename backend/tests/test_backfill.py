@@ -34,9 +34,7 @@ async def test_process_rows_only_generates_missing_fields(
         _row("both", summary=None, topic=None),
         _row("topic", summary="Existing summary", topic=None),
         _row("summary", summary=None, topic="labs"),
-        _row("fallback", summary="Existing summary", topic="tooling"),
     ]
-    rows[-1].score = 0.5
     calls: dict[str, list[str]] = {}
 
     async def summarize(items):
@@ -67,15 +65,11 @@ async def test_process_rows_only_generates_missing_fields(
     monkeypatch.setattr(backfill, "embed_item", embed)
     monkeypatch.setattr(backfill, "upsert", save)
 
-    stats = await backfill.process_rows(  # type: ignore[arg-type]
-        session,
-        rows,
-        classify_ids={"fallback"},
-    )
+    stats = await backfill.process_rows(session, rows)  # type: ignore[arg-type]
 
     assert calls == {
         "summarize": ["both", "summary"],
-        "classify": ["both", "topic", "fallback"],
+        "classify": ["both", "topic"],
         "embed": ["both", "summary"],
         "upsert": ["both", "summary"],
     }
@@ -85,8 +79,8 @@ async def test_process_rows_only_generates_missing_fields(
     assert rows[2].topic == "labs"
     assert session.committed
     assert stats == backfill.BackfillStats(
-        processed=4,
+        processed=3,
         summarized=2,
-        classified=3,
+        classified=2,
         reembedded=2,
     )

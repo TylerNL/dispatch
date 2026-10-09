@@ -35,8 +35,6 @@ class BackfillStats:
 async def process_rows(
     session: AsyncSession,
     rows: list[ItemRow],
-    *,
-    classify_ids: set[str] | None = None,
 ) -> BackfillStats:
     items = [_to_item(row) for row in rows]
     by_id = {row.id: row for row in rows}
@@ -46,11 +44,7 @@ async def process_rows(
         item.summary = summary
         by_id[item.id].summary = summary
 
-    needs_topic = [
-        item
-        for item in items
-        if item.topic is None or (classify_ids is not None and item.id in classify_ids)
-    ]
+    needs_topic = [item for item in items if item.topic is None]
     for item, (topic, score) in zip(needs_topic, await classify_batch(needs_topic)):
         item.topic = topic
         item.score = score
@@ -118,47 +112,6 @@ async def backfill_incomplete(
     return total
 
 
-async def reclassify_fallbacks(*, batch_size: int = 25) -> BackfillStats:
-    async with SessionLocal() as session:
-        target_ids = list(
-            (
-                await session.execute(
-                    select(ItemRow.id)
-                    .where(ItemRow.topic == "tooling", ItemRow.score == 0.5)
-                    .order_by(ItemRow.created_at, ItemRow.id)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-    total = BackfillStats()
-    for offset in range(0, len(target_ids), batch_size):
-        batch_ids = target_ids[offset : offset + batch_size]
-        async with SessionLocal() as session:
-            rows = list(
-                (
-                    await session.execute(
-                        select(ItemRow).where(ItemRow.id.in_(batch_ids))
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            batch = await process_rows(
-                session,
-                rows,
-                classify_ids=set(batch_ids),
-            )
-            total.add(batch)
-            logger.info(
-                "reclassification progress: processed=%d classified=%d",
-                total.processed,
-                total.classified,
-            )
-    return total
-
-
 def _to_item(row: ItemRow) -> Item:
     return Item(
         id=row.id,
@@ -178,7 +131,6 @@ async def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size", type=int, default=25)
     parser.add_argument("--limit", type=int)
-    parser.add_argument("--reclassify-fallbacks", action="store_true")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -188,10 +140,7 @@ async def _main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-    if args.reclassify_fallbacks:
-        stats = await reclassify_fallbacks(batch_size=args.batch_size)
-    else:
-        stats = await backfill_incomplete(batch_size=args.batch_size, limit=args.limit)
+    stats = await backfill_incomplete(batch_size=args.batch_size, limit=args.limit)
     logger.info(
         "backfill complete: processed=%d summarized=%d classified=%d reembedded=%d",
         stats.processed,
