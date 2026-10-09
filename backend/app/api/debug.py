@@ -1,16 +1,20 @@
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from app.digest.builder import build_for, filter_for_topics, render_html, today
 from app.ingest.sources import AnthropicBlog, ArXiv, HackerNews, OpenAIBlog, TechCrunch
 from app.pipeline.embed import embed_item, embed_text
 from app.rag.retriever import _detect_sources, _rrf_fuse, _WINDOW_DELTAS
 from app.schemas.ask import TimeWindow
-from app.schemas.item import Item
+from app.schemas.item import Item, Topic
+from app.schemas.subscriber import ALL_TOPICS
 from app.storage.db import SessionLocal
 from app.storage.vector import hydrate_items, keyword_search, search, upsert, vector_search
 
@@ -49,6 +53,18 @@ async def ingest_anthropic() -> list[Item]:
 @router.get("/ingest-openai", response_model=list[Item])
 async def ingest_openai() -> list[Item]:
     return await _collect(OpenAIBlog)
+
+
+@router.get("/digest-preview", response_class=HTMLResponse)
+async def digest_preview(
+    topics: Annotated[list[Topic] | None, Query()] = None,
+    day: Annotated[date | None, Query()] = None,
+) -> HTMLResponse:
+    digest = filter_for_topics(
+        await build_for(day or today()),
+        topics or list(ALL_TOPICS),
+    )
+    return HTMLResponse(render_html(digest))
 
 
 class SeedResult(BaseModel):
