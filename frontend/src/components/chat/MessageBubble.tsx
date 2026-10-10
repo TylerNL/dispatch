@@ -10,6 +10,7 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
+  const content = linkInlineCitations(message.content, message.citations);
 
   if (isUser) {
     return (
@@ -38,8 +39,40 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         <div className="min-w-0 flex-1">
           <div className="markdown-body text-[14.5px] text-text leading-relaxed">
             {message.content ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ href, children }) => {
+                    const marker = /^\[(\d+)\]$/.exec(String(children));
+                    const citation = marker
+                      ? message.citations?.[Number(marker[1]) - 1]
+                      : undefined;
+
+                    return (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={
+                          citation
+                            ? `Source ${marker?.[1]}: ${citation.title}`
+                            : undefined
+                        }
+                        title={citation?.title}
+                      >
+                        {marker ? (
+                          <sup className="font-mono text-[10px] font-semibold">
+                            {children}
+                          </sup>
+                        ) : (
+                          children
+                        )}
+                      </a>
+                    );
+                  },
+                }}
+              >
+                {content}
               </ReactMarkdown>
             ) : message.isStreaming ? (
               <span className="inline-flex items-center gap-1.5 text-text-mute">
@@ -58,4 +91,27 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       </div>
     </div>
   );
+}
+
+function linkInlineCitations(
+  content: string,
+  citations: ChatMessage['citations'],
+): string {
+  if (!citations?.length) return content;
+
+  return content.replace(/(?<!\[)\[(\d+)\](?!\()/g, (marker, rawNumber: string) => {
+    const citation = citations[Number(rawNumber) - 1];
+    if (!citation || !isSafeExternalUrl(citation.url)) return marker;
+
+    const destination = citation.url.replace(/</g, '%3C').replace(/>/g, '%3E');
+    return `[[${rawNumber}]](<${destination}>)`;
+  });
+}
+
+function isSafeExternalUrl(value: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 }
